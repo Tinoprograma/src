@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Ruta de prueba básica
+// Rutas de prueba
 app.get('/test', (req, res) => {
   res.json({ 
     message: 'Sabelo API funciona',
@@ -16,7 +16,6 @@ app.get('/test', (req, res) => {
   });
 });
 
-// Ruta para probar MySQL
 app.get('/test/mysql', async (req, res) => {
   try {
     const sequelize = require('./config/database');
@@ -31,6 +30,20 @@ app.get('/test/mysql', async (req, res) => {
       error: error.message 
     });
   }
+});
+
+// Rutas principales
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/users', require('./routes/users.routes'));
+app.use('/api/songs', require('./routes/songs.routes'));
+app.use('/api/annotations', require('./routes/annotations.routes'));
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    message: 'Ruta no encontrada',
+    path: req.originalUrl 
+  });
 });
 
 module.exports = app;
