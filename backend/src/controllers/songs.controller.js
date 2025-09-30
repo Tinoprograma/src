@@ -1,5 +1,5 @@
 const sequelize = require('../config/database');
-const songs = require('../models/Song.model.js');
+const Song = require('../models/Song.model.js');
 
 class SongsController {
   // Obtener todas las canciones con paginación

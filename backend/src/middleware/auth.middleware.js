@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models'); // Descomentar cuando tengamos modelos
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -13,15 +12,9 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
     
-    // TODO: Buscar usuario cuando tengamos modelos
-    const user = await User.findByPk(decoded.userId);
-    if (!user) {
-     return res.status(401).json({ message: 'Usuario no encontrado' });
-    }
-    
-    req.user = { id: decoded.userId }; // Temporalmente
+    req.user = { id: decoded.userId };
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -44,13 +37,14 @@ const optionalAuth = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
     
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
       req.user = { id: decoded.userId };
+    } else {
+      req.user = null;
     }
     
     next();
   } catch (error) {
-    // Si hay error en token opcional, continuar sin usuario
     req.user = null;
     next();
   }

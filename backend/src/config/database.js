@@ -9,27 +9,19 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'mysql',
-    logging: process.env.NODE_ENV === 'development' ? console.log : false,
-    pool: {
-      max: 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    define: {
-      timestamps: true,
-      underscored: true
-    }
+    logging: false  // Desactivar logs por ahora
   }
 );
 
-// Test connection
-sequelize.authenticate()
-  .then(() => {
-    console.log('✅ Conexión a MySQL establecida correctamente');
-  })
-  .catch(err => {
-    console.error('❌ Error conectando a MySQL:', err);
-  });
+// Comentar el test automático para que no bloquee el inicio
+// async function testConnection() {
+//   try {
+//     await sequelize.authenticate();
+//     console.log('✅ MySQL conectado correctamente');
+//   } catch (error) {
+//     console.error('❌ Error conectando a MySQL:', error.message);
+//   }
+// }
+// testConnection();
 
 module.exports = sequelize;
