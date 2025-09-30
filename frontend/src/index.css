@@ -2,46 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos base para Sabelo */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-  
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   font-family: 'Inter', sans-serif;
-}
-
-/* Clases custom para anotaciones */
-.annotation-highlight {
-  @apply bg-yellow-200 hover:bg-yellow-300 cursor-pointer rounded px-1 transition-colors;
-}
-
-.annotation-tooltip {
-  @apply absolute z-10 p-2 bg-gray-900 text-white text-sm rounded shadow-lg max-w-xs;
-}
-
-/* Animaciones personalizadas */
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
 }
