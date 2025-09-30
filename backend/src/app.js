@@ -38,8 +38,8 @@ app.use('/api/users', require('./routes/users.routes'));
 app.use('/api/songs', require('./routes/songs.routes'));
 app.use('/api/annotations', require('./routes/annotations.routes'));
 
-// 404 handler
-app.use('*', (req, res) => {
+// 404 handler - SIN el asterisco
+app.use((req, res) => {
   res.status(404).json({ 
     message: 'Ruta no encontrada',
     path: req.originalUrl 
