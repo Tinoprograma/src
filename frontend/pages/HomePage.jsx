@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export default function HomePage() {
   return (
-    <div className="bg-gradient-to-br from-primary-50 to-accent-50 min-h-[80vh] flex items-center">
+    <div className="bg-linear-to-br from-primary-50 to-accent-50 min-h-[80vh] flex items-center">
       <div className="container mx-auto px-4">
         <div className="text-center max-w-4xl mx-auto">
           <h1 className="text-6xl font-bold text-gray-900 mb-6">

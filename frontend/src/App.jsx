@@ -2,7 +2,7 @@ import './index.css'
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-cyan-50">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 to-cyan-50">
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-5xl font-bold text-orange-600 mb-4">
