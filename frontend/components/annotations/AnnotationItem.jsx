@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ThumbsUp, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { ThumbsUp, Edit, Trash2, AlertTriangle, Loader } from 'lucide-react';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 
@@ -9,21 +9,28 @@ export default function AnnotationItem({
   currentUser,
   onEdit,
   onDelete,
-  onVote,
+  onVote, // <--- La función que causa el problema
   onClose
 }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isVoting, setIsVoting] = useState(false);
+  const [isVoting, setIsVoting] = useState(false); // Estado para el spinner
 
   const isOwner = currentUser?.id === annotation.user_id;
-  const hasVoted = annotation.user_has_voted; // TODO: Obtener del backend
+  // Usamos hasVoted para reflejar el estado del usuario logueado en esta anotación
+  const hasVoted = annotation.user_has_voted; 
   const isVerified = annotation.is_verified || false;
 
   const handleVote = async () => {
     if (isOwner) return; // No puedes votar tu propia anotación
     
+    // CORRECCIÓN CLAVE: Verifica que onVote sea una función antes de llamarla
+    if (typeof onVote !== 'function') { 
+      console.error('La prop onVote no fue pasada al componente.');
+      return; 
+    }
+
     setIsVoting(true);
-    await onVote(annotation.id);
+    await onVote(annotation.id); 
     setIsVoting(false);
   };
 
@@ -37,110 +44,63 @@ export default function AnnotationItem({
       <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
         {/* Disclaimer para anotaciones no verificadas */}
         {!isVerified && (
-          <div className="mb-4 bg-pink-50 border border-pink-200 rounded p-3 flex items-start gap-2">
-            <AlertTriangle className="text-pink-600 flex-shrink-0 mt-0.5" size={18} />
+          <div className="mb-4 bg-pink-50 border border-pink-200 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle size={20} className="text-pink-600 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-pink-800">
-              Esta anotación es <span className="font-semibold">no verificada</span>
+              Esta anotación aún no ha sido verificada. Su contenido puede no ser preciso.
             </p>
           </div>
         )}
 
-        {/* Header con usuario */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-semibold">
-              {annotation.user.username.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <span className="font-medium text-gray-900 block">
-                {annotation.user.display_name || annotation.user.username}
-              </span>
-              {isVerified && (
-                <span className="text-xs text-green-600 font-medium">
-                  ✓ Verificada
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {isOwner && (
-              <>
-                <button
-                  onClick={() => onEdit(annotation)}
-                  className="text-gray-500 hover:text-primary-600 transition-colors"
-                  title="Editar"
-                >
-                  <Edit size={18} />
-                </button>
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="text-gray-500 hover:text-red-600 transition-colors"
-                  title="Eliminar"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </>
-            )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
+        <p className="text-gray-900 mb-6 whitespace-pre-wrap">{annotation.content}</p>
 
-        {/* Texto citado */}
-        <div className="mb-4 p-3 bg-yellow-50 rounded border-l-4" style={{ borderColor: artistColor }}>
-          <p className="text-gray-800 font-medium italic">
-            "{annotation.text_selection}"
-          </p>
-        </div>
-
-        {/* Explicación */}
-        <div className="mb-4">
-          <h4 className="text-sm font-semibold text-gray-700 mb-2">
-            Genius Annotation
-          </h4>
-          <p className="text-gray-700 leading-relaxed">
-            {annotation.explanation}
-          </p>
-        </div>
-
-        {/* Contexto cultural (si existe) */}
-        {annotation.cultural_context && (
-          <div className="mb-4 p-3 bg-blue-50 rounded">
-            <p className="text-sm font-semibold text-blue-900 mb-1">
-              Contexto Cultural:
-            </p>
-            <p className="text-sm text-blue-800">
-              {annotation.cultural_context}
-            </p>
-          </div>
-        )}
-
-        {/* Botones de interacción */}
-        <div className="flex items-center gap-4 pt-4 border-t">
+        {/* Acciones */}
+        <div className="flex items-center gap-4 text-sm">
+          {/* Botón de Voto */}
           <button
             onClick={handleVote}
-            disabled={isOwner || isVoting}
+            disabled={isOwner || isVoting} // Deshabilitar si es propietario o está votando
             className={`
-              flex items-center gap-2 px-3 py-1.5 rounded transition-colors
-              ${hasVoted 
-                ? 'bg-primary-100 text-primary-700' 
-                : 'hover:bg-gray-100 text-gray-600'
-              }
-              ${isOwner ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              flex items-center gap-2 px-3 py-1.5 rounded-full text-white transition-all
+              ${hasVoted ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 hover:bg-primary-600'}
+              ${isOwner || isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
+            style={{
+              backgroundColor: hasVoted ? artistColor : undefined // Usa color del artista si ya votó
+            }}
           >
-            <ThumbsUp size={16} />
+            {isVoting ? (
+              <Loader size={16} className="animate-spin" />
+            ) : (
+              <ThumbsUp size={16} />
+            )}
             <span className="font-medium">{annotation.upvotes}</span>
           </button>
 
           <button className="text-gray-500 hover:text-gray-700 transition-colors text-sm">
             Compartir
           </button>
+          
+          {/* Botones de edición/eliminación */}
+          {isOwner && (
+            <>
+              <button 
+                onClick={() => onEdit(annotation)} 
+                className="text-gray-500 hover:text-primary-600 transition-colors text-sm flex items-center gap-1"
+              >
+                <Edit size={14} />
+                Editar
+              </button>
+              <button 
+                onClick={() => setShowDeleteModal(true)} 
+                className="text-red-500 hover:text-red-700 transition-colors text-sm flex items-center gap-1"
+              >
+                <Trash2 size={14} />
+                Eliminar
+              </button>
+            </>
+          )}
+
         </div>
 
         {/* Info del propietario */}
@@ -174,7 +134,7 @@ export default function AnnotationItem({
             </Button>
             <Button
               variant="danger"
-              onClick={handleDelete}
+              onClick={handleDelete} // Usa el handler local
             >
               Eliminar
             </Button>

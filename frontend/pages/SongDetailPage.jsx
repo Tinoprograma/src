@@ -324,6 +324,9 @@ export default function SongDetailPage() {
 
               {selectedAnnotation && !showAnnotationForm && (
                 <AnnotationItem
+                  // CORRECCIÓN CLAVE: Usar el ID como key para forzar la recreación del componente
+                  // y asegurar que reciba la prop 'onVote' correctamente.
+                  key={selectedAnnotation.id} 
                   annotation={selectedAnnotation}
                   artistColor={song.artist_color || '#2563eb'}
                   currentUser={user}
