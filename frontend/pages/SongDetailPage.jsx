@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Eye, MessageSquare } from 'lucide-react';
 import AnnotationForm from '../components/annotations/AnnotationForm';
 import AnnotationItem from '../components/annotations/AnnotationItem';
+import { useAuth } from '../components/auth/AuthContext'; 
 import Button from '../components/ui/Button';
 
 export default function SongDetailPage() {
