@@ -15,6 +15,7 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import SongsPage from '../pages/SongsPage';
 import SongDetailPage from '../pages/SongDetailPage';
+import CreateSongPage from '../pages/CreateSongPage';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/songs" element={<SongsPage />} />
               <Route path="/songs/:id" element={<SongDetailPage />} />
+              <Route path="/songs/create" element={<CreateSongPage />} />
             </Routes>
           </main>
 

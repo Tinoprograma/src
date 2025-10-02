@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 
-const authenticateToken = async (req, res, next) => {
+// Eliminamos 'async' ya que jwt.verify es síncrono.
+// Esto asegura que cualquier error sea capturado y manejado correctamente.
+const authenticateToken = (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
@@ -12,11 +14,14 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
+    // jwt.verify lanza un error síncrono si falla
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
     
     req.user = { id: decoded.userId };
     next();
+    
   } catch (error) {
+    // Si jwt.verify falla, se ejecuta este bloque
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 
         message: 'Token expirado',
@@ -24,6 +29,7 @@ const authenticateToken = async (req, res, next) => {
       });
     }
     
+    // Para cualquier otro error de verificación (Token inválido, etc.)
     return res.status(403).json({ 
       message: 'Token inválido',
       code: 'INVALID_TOKEN'
@@ -31,7 +37,7 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-const optionalAuth = async (req, res, next) => {
+const optionalAuth = (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -39,14 +45,11 @@ const optionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
       req.user = { id: decoded.userId };
-    } else {
-      req.user = null;
     }
-    
     next();
   } catch (error) {
-    req.user = null;
-    next();
+    // Si el token opcional falla, simplemente se ignora y se llama a next()
+    next(); 
   }
 };
 

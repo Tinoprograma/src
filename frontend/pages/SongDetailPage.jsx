@@ -3,80 +3,48 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Eye, MessageSquare } from 'lucide-react';
 import AnnotationForm from '../components/annotations/AnnotationForm';
 import AnnotationItem from '../components/annotations/AnnotationItem';
-import { useAuth } from '../components/auth/AuthContext'; 
+import { useAuth } from '../components/auth/AuthContext';
+import { songService } from '../services/songService';
+import { annotationService } from '../services/annotationService';
+import toast from 'react-hot-toast';
 import Button from '../components/ui/Button';
 
 export default function SongDetailPage() {
   const { id } = useParams();
+  const { isAuthenticated, user } = useAuth();
   const [song, setSong] = useState(null);
   const [annotations, setAnnotations] = useState([]);
   const [selectedAnnotation, setSelectedAnnotation] = useState(null);
   const [hoveredAnnotation, setHoveredAnnotation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Para crear nueva anotación
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState(null);
   const [showAnnotationForm, setShowAnnotationForm] = useState(false);
-  
-  // Simulación de autenticación
-  const { isAuthenticated, user } = useAuth(); // Obtener del contexto de auth
 
   useEffect(() => {
-    // TODO: Fetch song and annotations from API
-    setTimeout(() => {
-      setSong({
-        id: 1,
-        title: "Can't Stop This",
-        artist_name: "Nine Vicious",
-        artist_color: "#2563eb",
-        album: "Underground Hits",
-        release_year: 2024,
-        lyrics: `[Intro]
-(Ahmad, nigga, what the word it is?)
-T-ha, no cap
-I told my nigga 'bout that underground shit
-(Nothing's gonna stop me) Slatt
-(Nothing's gonna stop me) Say what?
-
-[Chorus]
-I'm a rockstar, poppin' my shit (Rockstar, rockstar)
-I'm a popstar livin' lit (Say what?)
-If I got caught by the cops, I ain't tellin' shit (Tellin' shit)
-Pullin' up with Drac's, pullin' up with sticks (Boom, boom)
-
-[Verse]
-Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop me)
-Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
-(Nothing's gonna stop me) Woah, woah
-(Nothing's gonna stop me) Woah`,
-        view_count: 1,
-        annotation_count: 1
-      });
-      
-    setAnnotations([
-    {
-        id: 1,
-        user_id: 123,
-        start_char: 203,
-        end_char: 227,
-        text_selection: "poppin' my shit",
-        explanation: "Expresión del hip-hop que significa presumir o alardear sobre sus logros, éxito, dinero o estilo de vida.",
-        cultural_context: "Este término se popularizó en la cultura hip-hop de los años 2000.",
-        upvotes: 12,
-        is_verified: false,
-        user_has_voted: false,
-        user: { 
-        id: 123,
-        username: "musicfan123", 
-        display_name: "Music Fan" 
-        }
-    }
-    ]);
-      
-      setIsLoading(false);
-    }, 1000);
+    fetchSongData();
   }, [id]);
+
+  const fetchSongData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Obtener canción desde el backend
+      const songResponse = await songService.getById(id);
+      setSong(songResponse.song);
+      
+      // Obtener anotaciones desde el backend
+      const annotationsResponse = await annotationService.getBySongId(id);
+      setAnnotations(annotationsResponse.annotations || []);
+      
+    } catch (error) {
+      console.error('Error cargando datos:', error);
+      toast.error('Error cargando la canción');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -87,7 +55,6 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
       const lyricsContainer = document.getElementById('lyrics-container');
       
       if (lyricsContainer && lyricsContainer.contains(range.commonAncestorContainer)) {
-        // Calcular posición en el texto completo
         const preSelectionRange = range.cloneRange();
         preSelectionRange.selectNodeContents(lyricsContainer);
         preSelectionRange.setEnd(range.startContainer, range.startOffset);
@@ -102,23 +69,78 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
     }
   };
 
-  const handleAnnotationSubmit = (annotationData) => {
-    // TODO: Enviar al backend y actualizar lista
-    const newAnnotation = {
-      id: annotations.length + 1,
-      ...annotationData,
-      upvotes: 0,
-      downvotes: 0,
-      user: { username: "current_user", display_name: "Tú" }
-    };
-    
-    setAnnotations([...annotations, newAnnotation]);
-    setShowAnnotationForm(false);
-    setSelectedText('');
-    setSelectionRange(null);
-    
-    // Mostrar la nueva anotación
-    setSelectedAnnotation(newAnnotation);
+  const handleAnnotationSubmit = async (annotationData) => {
+    try {
+      const response = await annotationService.create(annotationData);
+      
+      // Agregar la nueva anotación a la lista
+      const newAnnotation = response.annotation;
+      setAnnotations([...annotations, newAnnotation]);
+      
+      // Limpiar formulario
+      setShowAnnotationForm(false);
+      setSelectedText('');
+      setSelectionRange(null);
+      
+      // Mostrar la nueva anotación
+      setSelectedAnnotation(newAnnotation);
+      
+      toast.success('Anotación creada exitosamente');
+    } catch (error) {
+      console.error('Error creando anotación:', error);
+      toast.error(error.response?.data?.message || 'Error creando anotación');
+    }
+  };
+
+  const handleVote = async (annotationId) => {
+    try {
+      await annotationService.vote(annotationId, 'up');
+      
+      // Actualizar las anotaciones localmente
+      const updatedAnnotations = annotations.map(a => {
+        if (a.id === annotationId) {
+          return {
+            ...a,
+            upvotes: a.upvotes + (a.user_has_voted ? -1 : 1),
+            user_has_voted: !a.user_has_voted
+          };
+        }
+        return a;
+      });
+      
+      setAnnotations(updatedAnnotations);
+      
+      // Actualizar la anotación seleccionada si es la misma
+      if (selectedAnnotation?.id === annotationId) {
+        const updated = updatedAnnotations.find(a => a.id === annotationId);
+        setSelectedAnnotation(updated);
+      }
+      
+    } catch (error) {
+      console.error('Error votando:', error);
+      toast.error('Error al votar');
+    }
+  };
+
+  const handleDelete = async (annotationId) => {
+    try {
+      await annotationService.delete(annotationId);
+      
+      // Remover la anotación de la lista
+      setAnnotations(annotations.filter(a => a.id !== annotationId));
+      setSelectedAnnotation(null);
+      
+      toast.success('Anotación eliminada');
+    } catch (error) {
+      console.error('Error eliminando:', error);
+      toast.error('Error al eliminar');
+    }
+  };
+
+  const handleEdit = async (annotation) => {
+    // TODO: Implementar modal de edición
+    console.log('Editar anotación:', annotation);
+    toast.info('Función de edición en desarrollo');
   };
 
   const renderLyricsWithAnnotations = () => {
@@ -189,7 +211,12 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
   if (!song) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Canción no encontrada</p>
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Canción no encontrada</p>
+          <Link to="/songs">
+            <Button>Volver a canciones</Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -199,7 +226,7 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
       {/* Header */}
       <div 
         className="py-12 px-4"
-        style={{ backgroundColor: `${song.artist_color}15` }}
+        style={{ backgroundColor: `${song.artist_color || '#2563eb'}15` }}
       >
         <div className="container mx-auto max-w-5xl">
           <Link 
@@ -213,7 +240,7 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
           <div className="flex items-start gap-6">
             <div 
               className="w-32 h-32 rounded flex-shrink-0 flex items-center justify-center text-white text-4xl font-bold"
-              style={{ backgroundColor: song.artist_color }}
+              style={{ backgroundColor: song.artist_color || '#2563eb' }}
             >
               {song.title.charAt(0)}
             </div>
@@ -243,7 +270,7 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
                 </div>
                 <div className="flex items-center gap-1">
                   <MessageSquare size={16} />
-                  <span>{song.annotation_count} anotación{song.annotation_count !== 1 ? 'es' : ''}</span>
+                  <span>{annotations.length} anotación{annotations.length !== 1 ? 'es' : ''}</span>
                 </div>
               </div>
             </div>
@@ -270,7 +297,6 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
           {/* Panel lateral */}
           <div className="lg:col-span-2">
             <div className="lg:sticky lg:top-24 space-y-4">
-              {/* Formulario de nueva anotación */}
               {showAnnotationForm && (
                 isAuthenticated ? (
                   <AnnotationForm
@@ -296,34 +322,18 @@ Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
                 )
               )}
 
-              {/* Anotación seleccionada */}
-                {selectedAnnotation && !showAnnotationForm && (
+              {selectedAnnotation && !showAnnotationForm && (
                 <AnnotationItem
-                    annotation={selectedAnnotation}
-                    artistColor={song.artist_color}
-                    currentUser={user} // Obtener del contexto de auth
-                    onEdit={(annotation) => {
-                    // TODO: Implementar edición
-                    console.log('Editar anotación:', annotation);
-                    }}
-                    onDelete={(annotationId) => {
-                    // TODO: Implementar eliminación en el backend
-                    setAnnotations(annotations.filter(a => a.id !== annotationId));
-                    setSelectedAnnotation(null);
-                    }}
-                    onVote={async (annotationId) => {
-                    // TODO: Enviar voto al backend
-                    setAnnotations(annotations.map(a => 
-                        a.id === annotationId 
-                        ? { ...a, upvotes: a.upvotes + 1, user_has_voted: true }
-                        : a
-                    ));
-                    }}
-                    onClose={() => setSelectedAnnotation(null)}
+                  annotation={selectedAnnotation}
+                  artistColor={song.artist_color || '#2563eb'}
+                  currentUser={user}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onVote={handleVote}
+                  onClose={() => setSelectedAnnotation(null)}
                 />
-                )}
+              )}
 
-              {/* Estado por defecto */}
               {!selectedAnnotation && !showAnnotationForm && (
                 <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200">
                   <MessageSquare className="mx-auto text-gray-400 mb-4" size={48} />
