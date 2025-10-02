@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
+  const { register, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -15,6 +16,10 @@ export default function RegisterPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleChange = (e) => {
     setFormData({
@@ -29,21 +34,15 @@ export default function RegisterPage() {
   const validate = () => {
     const newErrors = {};
     
-    if (!formData.email) {
-      newErrors.email = 'Email es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email inválido';
     }
     
-    if (!formData.username) {
-      newErrors.username = 'Username es requerido';
-    } else if (formData.username.length < 3) {
+    if (!formData.username || formData.username.length < 3) {
       newErrors.username = 'Username debe tener al menos 3 caracteres';
     }
     
-    if (!formData.password) {
-      newErrors.password = 'Contraseña es requerida';
-    } else if (formData.password.length < 8) {
+    if (!formData.password || formData.password.length < 8) {
       newErrors.password = 'Contraseña debe tener al menos 8 caracteres';
     }
     
@@ -65,13 +64,10 @@ export default function RegisterPage() {
     
     setIsLoading(true);
     
-    // TODO: Implementar registro con el backend
-    console.log('Register:', formData);
+    const { confirmPassword, ...registerData } = formData;
+    await register(registerData);
     
-    setTimeout(() => {
-      setIsLoading(false);
-      // navigate('/login');
-    }, 1000);
+    setIsLoading(false);
   };
 
   return (
@@ -135,8 +131,6 @@ export default function RegisterPage() {
                 <option value="PE">Perú</option>
                 <option value="VE">Venezuela</option>
                 <option value="UY">Uruguay</option>
-                <option value="EC">Ecuador</option>
-                <option value="BO">Bolivia</option>
               </select>
             </div>
 

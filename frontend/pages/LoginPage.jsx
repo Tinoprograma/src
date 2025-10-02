@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
 export default function LoginPage() {
+  const { login, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -11,12 +13,16 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redirigir si ya está autenticado
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
-    // Limpiar error del campo
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: '' });
     }
@@ -26,12 +32,9 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // TODO: Implementar login con el backend
-    console.log('Login:', formData);
+    await login(formData);
     
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    setIsLoading(false);
   };
 
   return (
@@ -68,12 +71,12 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center">
-                <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                <input 
+                  type="checkbox" 
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" 
+                />
                 <span className="ml-2 text-sm text-gray-600">Recordarme</span>
               </label>
-              <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
-                ¿Olvidaste tu contraseña?
-              </Link>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

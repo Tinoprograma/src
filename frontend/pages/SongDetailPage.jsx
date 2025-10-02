@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Eye, MessageSquare } from 'lucide-react';
+import AnnotationForm from '../components/annotations/AnnotationForm';
+import AnnotationItem from '../components/annotations/AnnotationItem';
+import Button from '../components/ui/Button';
 
 export default function SongDetailPage() {
   const { id } = useParams();
@@ -9,6 +12,14 @@ export default function SongDetailPage() {
   const [selectedAnnotation, setSelectedAnnotation] = useState(null);
   const [hoveredAnnotation, setHoveredAnnotation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Para crear nueva anotación
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionRange, setSelectionRange] = useState(null);
+  const [showAnnotationForm, setShowAnnotationForm] = useState(false);
+  
+  // Simulación de autenticación
+  const { isAuthenticated, user } = useAuth(); // Obtener del contexto de auth
 
   useEffect(() => {
     // TODO: Fetch song and annotations from API
@@ -17,7 +28,7 @@ export default function SongDetailPage() {
         id: 1,
         title: "Can't Stop This",
         artist_name: "Nine Vicious",
-        artist_color: "#f97316", // Color del artista
+        artist_color: "#2563eb",
         album: "Underground Hits",
         release_year: 2024,
         lyrics: `[Intro]
@@ -30,39 +41,84 @@ I told my nigga 'bout that underground shit
 [Chorus]
 I'm a rockstar, poppin' my shit (Rockstar, rockstar)
 I'm a popstar livin' lit (Say what?)
-Really spent me some M's with the jeweler
-Look at me, this how you wear a Bugatti
-Opened her purse and she brung out them racks (Too many)
-Literally, she in her bag`,
+If I got caught by the cops, I ain't tellin' shit (Tellin' shit)
+Pullin' up with Drac's, pullin' up with sticks (Boom, boom)
+
+[Verse]
+Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop me)
+Nothin' gonna stop me, what ya' talkin' 'bout, shawty? (Stop this)
+(Nothing's gonna stop me) Woah, woah
+(Nothing's gonna stop me) Woah`,
         view_count: 1,
-        annotation_count: 2
+        annotation_count: 1
       });
       
-      // Simulación de anotaciones con posiciones en el texto
-      setAnnotations([
-        {
-          id: 1,
-          start_char: 250,
-          end_char: 316,
-          text_selection: "Really spent me some M's with the jeweler",
-          explanation: "El precio inicial de la mayoría de los Bugattis está en múltiples millones. Porque 'Bagg gastó millones de dólares en joyería, cuando se la pone, lleva puesto el equivalente al precio de un Bugatti.",
-          upvotes: 12,
-          user: { username: "musicfan123" }
-        },
-        {
-          id: 2,
-          start_char: 155,
-          end_char: 197,
-          text_selection: "I'm a rockstar, poppin' my shit",
-          explanation: "Referencia al estilo de vida de las estrellas de rock, viviendo sin límites y mostrando su éxito.",
-          upvotes: 8,
-          user: { username: "hiphophead" }
+    setAnnotations([
+    {
+        id: 1,
+        user_id: 123,
+        start_char: 203,
+        end_char: 227,
+        text_selection: "poppin' my shit",
+        explanation: "Expresión del hip-hop que significa presumir o alardear sobre sus logros, éxito, dinero o estilo de vida.",
+        cultural_context: "Este término se popularizó en la cultura hip-hop de los años 2000.",
+        upvotes: 12,
+        is_verified: false,
+        user_has_voted: false,
+        user: { 
+        id: 123,
+        username: "musicfan123", 
+        display_name: "Music Fan" 
         }
-      ]);
+    }
+    ]);
       
       setIsLoading(false);
     }, 1000);
   }, [id]);
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    const selectedString = selection.toString().trim();
+    
+    if (selectedString.length > 0) {
+      const range = selection.getRangeAt(0);
+      const lyricsContainer = document.getElementById('lyrics-container');
+      
+      if (lyricsContainer && lyricsContainer.contains(range.commonAncestorContainer)) {
+        // Calcular posición en el texto completo
+        const preSelectionRange = range.cloneRange();
+        preSelectionRange.selectNodeContents(lyricsContainer);
+        preSelectionRange.setEnd(range.startContainer, range.startOffset);
+        const start = preSelectionRange.toString().length;
+        const end = start + selectedString.length;
+        
+        setSelectedText(selectedString);
+        setSelectionRange({ start, end });
+        setShowAnnotationForm(true);
+        setSelectedAnnotation(null);
+      }
+    }
+  };
+
+  const handleAnnotationSubmit = (annotationData) => {
+    // TODO: Enviar al backend y actualizar lista
+    const newAnnotation = {
+      id: annotations.length + 1,
+      ...annotationData,
+      upvotes: 0,
+      downvotes: 0,
+      user: { username: "current_user", display_name: "Tú" }
+    };
+    
+    setAnnotations([...annotations, newAnnotation]);
+    setShowAnnotationForm(false);
+    setSelectedText('');
+    setSelectionRange(null);
+    
+    // Mostrar la nueva anotación
+    setSelectedAnnotation(newAnnotation);
+  };
 
   const renderLyricsWithAnnotations = () => {
     if (!song || !song.lyrics) return null;
@@ -71,11 +127,9 @@ Literally, she in her bag`,
     let currentIndex = 0;
     const lyrics = song.lyrics;
     
-    // Ordenar anotaciones por posición
     const sortedAnnotations = [...annotations].sort((a, b) => a.start_char - b.start_char);
 
     sortedAnnotations.forEach((annotation) => {
-      // Texto antes de la anotación
       if (currentIndex < annotation.start_char) {
         result.push(
           <span key={`text-${currentIndex}`}>
@@ -84,7 +138,6 @@ Literally, she in her bag`,
         );
       }
 
-      // Texto anotado
       const isSelected = selectedAnnotation?.id === annotation.id;
       const isHovered = hoveredAnnotation === annotation.id;
       
@@ -93,16 +146,18 @@ Literally, she in her bag`,
           key={`annotation-${annotation.id}`}
           className={`
             cursor-pointer transition-all duration-200 rounded px-1 -mx-1
-            ${isSelected ? 'bg-yellow-300' : isHovered ? 'bg-yellow-200' : 'bg-yellow-100'}
-            ${isHovered ? 'shadow-sm' : ''}
+            ${isSelected ? 'bg-yellow-300 font-medium' : 'bg-yellow-100'}
           `}
           style={{
-            backgroundColor: isHovered && !isSelected ? `${song.artist_color}40` : undefined,
+            backgroundColor: isHovered && !isSelected ? `${song.artist_color}30` : undefined,
             borderBottom: isSelected ? `3px solid ${song.artist_color}` : undefined
           }}
           onMouseEnter={() => setHoveredAnnotation(annotation.id)}
           onMouseLeave={() => setHoveredAnnotation(null)}
-          onClick={() => setSelectedAnnotation(isSelected ? null : annotation)}
+          onClick={() => {
+            setSelectedAnnotation(isSelected ? null : annotation);
+            setShowAnnotationForm(false);
+          }}
         >
           {lyrics.substring(annotation.start_char, annotation.end_char)}
         </span>
@@ -111,7 +166,6 @@ Literally, she in her bag`,
       currentIndex = annotation.end_char;
     });
 
-    // Texto restante
     if (currentIndex < lyrics.length) {
       result.push(
         <span key={`text-${currentIndex}`}>
@@ -141,10 +195,10 @@ Literally, she in her bag`,
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header con info de la canción */}
+      {/* Header */}
       <div 
         className="py-12 px-4"
-        style={{ backgroundColor: `${song.artist_color}20` }}
+        style={{ backgroundColor: `${song.artist_color}15` }}
       >
         <div className="container mx-auto max-w-5xl">
           <Link 
@@ -156,7 +210,6 @@ Literally, she in her bag`,
           </Link>
 
           <div className="flex items-start gap-6">
-            {/* Cover Image Placeholder */}
             <div 
               className="w-32 h-32 rounded flex-shrink-0 flex items-center justify-center text-white text-4xl font-bold"
               style={{ backgroundColor: song.artist_color }}
@@ -176,9 +229,7 @@ Literally, she in her bag`,
               </Link>
               
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                {song.album && (
-                  <span>{song.album}</span>
-                )}
+                {song.album && <span>{song.album}</span>}
                 {song.release_year && (
                   <div className="flex items-center gap-1">
                     <Calendar size={16} />
@@ -187,11 +238,11 @@ Literally, she in her bag`,
                 )}
                 <div className="flex items-center gap-1">
                   <Eye size={16} />
-                  <span>{song.view_count} {song.view_count === 1 ? 'vista' : 'vistas'}</span>
+                  <span>{song.view_count} vista{song.view_count !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <MessageSquare size={16} />
-                  <span>{song.annotation_count} {song.annotation_count === 1 ? 'anotación' : 'anotaciones'}</span>
+                  <span>{song.annotation_count} anotación{song.annotation_count !== 1 ? 'es' : ''}</span>
                 </div>
               </div>
             </div>
@@ -199,65 +250,87 @@ Literally, she in her bag`,
         </div>
       </div>
 
-      {/* Contenido principal: Letras y Anotación */}
+      {/* Contenido */}
       <div className="container mx-auto max-w-5xl px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* Letras */}
           <div className="lg:col-span-3">
-            <div className="prose prose-lg max-w-none">
+            <div 
+              id="lyrics-container"
+              className="prose prose-lg max-w-none select-text"
+              onMouseUp={handleTextSelection}
+            >
               <pre className="whitespace-pre-wrap font-sans text-base leading-loose text-gray-900">
                 {renderLyricsWithAnnotations()}
               </pre>
             </div>
           </div>
 
-          {/* Panel de anotación (sticky) */}
+          {/* Panel lateral */}
           <div className="lg:col-span-2">
-            <div className="lg:sticky lg:top-24">
-              {selectedAnnotation ? (
-                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-semibold">
-                        {selectedAnnotation.user.username.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="font-medium text-gray-900">
-                        {selectedAnnotation.user.username}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setSelectedAnnotation(null)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <div className="mb-4 p-3 bg-yellow-50 rounded border-l-4" style={{ borderColor: song.artist_color }}>
-                    <p className="text-gray-800 font-medium italic">
-                      "{selectedAnnotation.text_selection}"
+            <div className="lg:sticky lg:top-24 space-y-4">
+              {/* Formulario de nueva anotación */}
+              {showAnnotationForm && (
+                isAuthenticated ? (
+                  <AnnotationForm
+                    selectedText={selectedText}
+                    selectionRange={selectionRange}
+                    songId={song.id}
+                    onClose={() => {
+                      setShowAnnotationForm(false);
+                      setSelectedText('');
+                      setSelectionRange(null);
+                    }}
+                    onSubmit={handleAnnotationSubmit}
+                  />
+                ) : (
+                  <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+                    <p className="text-gray-600 mb-4">
+                      Inicia sesión para crear anotaciones
                     </p>
+                    <Link to="/login">
+                      <Button>Iniciar Sesión</Button>
+                    </Link>
                   </div>
+                )
+              )}
 
-                  <p className="text-gray-700 leading-relaxed mb-4">
-                    {selectedAnnotation.explanation}
-                  </p>
+              {/* Anotación seleccionada */}
+                {selectedAnnotation && !showAnnotationForm && (
+                <AnnotationItem
+                    annotation={selectedAnnotation}
+                    artistColor={song.artist_color}
+                    currentUser={user} // Obtener del contexto de auth
+                    onEdit={(annotation) => {
+                    // TODO: Implementar edición
+                    console.log('Editar anotación:', annotation);
+                    }}
+                    onDelete={(annotationId) => {
+                    // TODO: Implementar eliminación en el backend
+                    setAnnotations(annotations.filter(a => a.id !== annotationId));
+                    setSelectedAnnotation(null);
+                    }}
+                    onVote={async (annotationId) => {
+                    // TODO: Enviar voto al backend
+                    setAnnotations(annotations.map(a => 
+                        a.id === annotationId 
+                        ? { ...a, upvotes: a.upvotes + 1, user_has_voted: true }
+                        : a
+                    ));
+                    }}
+                    onClose={() => setSelectedAnnotation(null)}
+                />
+                )}
 
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <button className="flex items-center gap-1 hover:text-primary-600">
-                      <span>👍</span>
-                      <span>{selectedAnnotation.upvotes}</span>
-                    </button>
-                    <button className="flex items-center gap-1 hover:text-primary-600">
-                      <span>👎</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              {/* Estado por defecto */}
+              {!selectedAnnotation && !showAnnotationForm && (
                 <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200">
                   <MessageSquare className="mx-auto text-gray-400 mb-4" size={48} />
-                  <p className="text-gray-600">
-                    Haz clic en las partes resaltadas de la letra para ver las anotaciones
+                  <p className="text-gray-600 mb-2">
+                    Haz clic en las partes resaltadas para ver anotaciones
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    O selecciona texto para crear una nueva
                   </p>
                 </div>
               )}
