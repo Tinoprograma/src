@@ -3,18 +3,18 @@ import { Toaster } from 'react-hot-toast';
 import './index.css';
 
 // Context
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from '../components/auth/AuthContext';
 
 // Layout
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
+import Header from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
 
 // Pages
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import SongsPage from './pages/SongsPage';
-import SongDetailPage from './pages/SongDetailPage';
+import HomePage from '../pages/HomePage';
+import LoginPage from '../pages/LoginPage';
+import RegisterPage from '../pages/RegisterPage';
+import SongsPage from '../pages/SongsPage';
+import SongDetailPage from '../pages/SongDetailPage';
 
 function App() {
   return (
