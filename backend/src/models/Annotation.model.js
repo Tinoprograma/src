@@ -42,8 +42,13 @@ const Annotation = sequelize.define('Annotation', {
     type: DataTypes.INTEGER,
     defaultValue: 0
   },
+  is_verified: {  // 👈 AGREGAR ESTE CAMPO
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
+  },
   status: {
-    type: DataTypes.ENUM('active', 'hidden', 'deleted'),
+    type: DataTypes.ENUM('active', 'pending', 'rejected', 'hidden', 'deleted'),
     defaultValue: 'active'
   }
 }, {
