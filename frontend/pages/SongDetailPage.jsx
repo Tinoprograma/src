@@ -8,7 +8,7 @@ import SpotifyPlayer from '../components/spotify/SpotifyPlayer';
 import { useAuth } from '../components/auth/AuthContext';
 import { songService } from '../services/songService';
 import { annotationService } from '../services/annotationService';
-import { spotifyService } from '../services/spotifyService';
+import { spotifyService } from '../components/spotify/spotifyService';
 import toast from 'react-hot-toast';
 import Button from '../components/ui/Button';
 
@@ -93,7 +93,6 @@ export default function SongDetailPage() {
         songData.album,
         songData.release_year
       );
-}
       
       setSpotifyTrack(track);
       
@@ -568,3 +567,4 @@ export default function SongDetailPage() {
       <SpotifyPlayer track={spotifyTrack} />
     </div>
   );
+}

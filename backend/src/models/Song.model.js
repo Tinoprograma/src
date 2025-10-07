@@ -15,6 +15,21 @@ const Song = sequelize.define('Song', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  album_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'ID del álbum (null si es single)'
+  },
+  track_number: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Número de track en el álbum'
+  },
+  is_single: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'True si es un single'
+  },
   slug: {
     type: DataTypes.STRING(255),
     allowNull: false
@@ -24,7 +39,9 @@ const Song = sequelize.define('Song', {
     allowNull: false
   },
   album: {
-    type: DataTypes.STRING(255)
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'DEPRECATED: Usar album_id en su lugar'
   },
   release_year: {
     type: DataTypes.INTEGER
@@ -43,7 +60,6 @@ const Song = sequelize.define('Song', {
   created_by: {
     type: DataTypes.INTEGER
   },
-  // 👇 NUEVOS CAMPOS PARA SPOTIFY
   spotify_track_id: {
     type: DataTypes.STRING(100),
     allowNull: true,
@@ -52,12 +68,12 @@ const Song = sequelize.define('Song', {
   spotify_uri: {
     type: DataTypes.STRING(255),
     allowNull: true,
-    comment: 'URI de Spotify (spotify:track:xxxx)'
+    comment: 'URI de Spotify'
   },
   spotify_preview_url: {
     type: DataTypes.STRING(500),
     allowNull: true,
-    comment: 'URL de vista previa de 30 segundos'
+    comment: 'URL de vista previa'
   },
   spotify_external_url: {
     type: DataTypes.STRING(500),
