@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Eye, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Calendar, Eye, MessageSquare, Music } from 'lucide-react';
 import AnnotationForm from '../components/annotations/AnnotationForm';
 import AnnotationItem from '../components/annotations/AnnotationItem';
+import AnnotationEditModal from '../components/annotations/AnnotationEditModal';
+import SpotifyPlayer from '../components/spotify/SpotifyPlayer';
 import { useAuth } from '../components/auth/AuthContext';
 import { songService } from '../services/songService';
 import { annotationService } from '../services/annotationService';
+import { spotifyService } from '../services/spotifyService';
 import toast from 'react-hot-toast';
 import Button from '../components/ui/Button';
 
@@ -15,8 +18,13 @@ export default function SongDetailPage() {
   const [song, setSong] = useState(null);
   const [annotations, setAnnotations] = useState([]);
   const [selectedAnnotation, setSelectedAnnotation] = useState(null);
+  const [editingAnnotation, setEditingAnnotation] = useState(null);
   const [hoveredAnnotation, setHoveredAnnotation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 👇 NUEVO: Estado para Spotify
+  const [spotifyTrack, setSpotifyTrack] = useState(null);
+  const [isLoadingSpotify, setIsLoadingSpotify] = useState(false);
   
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState(null);
@@ -36,13 +44,69 @@ export default function SongDetailPage() {
       
       // Obtener anotaciones desde el backend
       const annotationsResponse = await annotationService.getBySongId(id);
-      setAnnotations(annotationsResponse.annotations || []);
+      const fetchedAnnotations = annotationsResponse.annotations || [];
+      
+      // Ordenar anotaciones según criterio
+      const sortedAnnotations = [...fetchedAnnotations].sort((a, b) => {
+        if (a.is_verified !== b.is_verified) {
+          return a.is_verified ? -1 : 1;
+        }
+        const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+        const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      
+      setAnnotations(sortedAnnotations);
+      
+      // 👇 NUEVO: Buscar en Spotify
+      fetchSpotifyTrack(songResponse.song);
+      
+      console.log('✅ Canción y anotaciones cargadas');
       
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast.error('Error cargando la canción');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 👇 NUEVO: Función para buscar en Spotify
+  const fetchSpotifyTrack = async (songData) => {
+    try {
+      setIsLoadingSpotify(true);
+      
+      // Si ya tiene spotify_track_id guardado, usarlo
+      if (songData.spotify_track_id) {
+        const track = await spotifyService.getTrack(songData.spotify_track_id);
+        setSpotifyTrack(track);
+        return;
+      }
+      
+      // Si no, buscar por título y artista
+      const track = await spotifyService.searchTrackAdvanced(
+        songData.title,
+        songData.artist_name,
+        songData.album,
+        songData.release_year
+      );
+}
+      
+      setSpotifyTrack(track);
+      
+      // Opcional: Guardar el spotify_track_id en el backend para futuras consultas
+      if (track && track.id) {
+        // TODO: Crear endpoint en backend para guardar spotify_track_id
+        console.log('💡 Spotify track encontrado:', track.id);
+      }
+      
+    } catch (error) {
+      console.error('Error buscando en Spotify:', error);
+    } finally {
+      setIsLoadingSpotify(false);
     }
   };
 
@@ -73,16 +137,25 @@ export default function SongDetailPage() {
     try {
       const response = await annotationService.create(annotationData);
       
-      // Agregar la nueva anotación a la lista
       const newAnnotation = response.annotation;
-      setAnnotations([...annotations, newAnnotation]);
+      const updatedAnnotations = [...annotations, newAnnotation];
       
-      // Limpiar formulario
+      const sortedAnnotations = updatedAnnotations.sort((a, b) => {
+        if (a.is_verified !== b.is_verified) {
+          return a.is_verified ? -1 : 1;
+        }
+        const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+        const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      
+      setAnnotations(sortedAnnotations);
       setShowAnnotationForm(false);
       setSelectedText('');
       setSelectionRange(null);
-      
-      // Mostrar la nueva anotación
       setSelectedAnnotation(newAnnotation);
       
       toast.success('Anotación creada exitosamente');
@@ -96,7 +169,6 @@ export default function SongDetailPage() {
     try {
       await annotationService.vote(annotationId, 'up');
       
-      // Actualizar las anotaciones localmente
       const updatedAnnotations = annotations.map(a => {
         if (a.id === annotationId) {
           return {
@@ -108,14 +180,26 @@ export default function SongDetailPage() {
         return a;
       });
       
-      setAnnotations(updatedAnnotations);
+      const sortedAnnotations = updatedAnnotations.sort((a, b) => {
+        if (a.is_verified !== b.is_verified) {
+          return a.is_verified ? -1 : 1;
+        }
+        const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+        const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+        if (scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
       
-      // Actualizar la anotación seleccionada si es la misma
+      setAnnotations(sortedAnnotations);
+      
       if (selectedAnnotation?.id === annotationId) {
-        const updated = updatedAnnotations.find(a => a.id === annotationId);
+        const updated = sortedAnnotations.find(a => a.id === annotationId);
         setSelectedAnnotation(updated);
       }
       
+      toast.success('Voto registrado');
     } catch (error) {
       console.error('Error votando:', error);
       toast.error('Error al votar');
@@ -125,11 +209,8 @@ export default function SongDetailPage() {
   const handleDelete = async (annotationId) => {
     try {
       await annotationService.delete(annotationId);
-      
-      // Remover la anotación de la lista
       setAnnotations(annotations.filter(a => a.id !== annotationId));
       setSelectedAnnotation(null);
-      
       toast.success('Anotación eliminada');
     } catch (error) {
       console.error('Error eliminando:', error);
@@ -137,10 +218,39 @@ export default function SongDetailPage() {
     }
   };
 
-  const handleEdit = async (annotation) => {
-    // TODO: Implementar modal de edición
-    console.log('Editar anotación:', annotation);
-    toast.info('Función de edición en desarrollo');
+  const handleEdit = (annotation) => {
+    setEditingAnnotation(annotation);
+  };
+
+  const handleEditSubmit = async (annotationId, updatedData) => {
+    try {
+      const response = await annotationService.update(annotationId, updatedData);
+      
+      const updatedAnnotations = annotations.map(a => 
+        a.id === annotationId ? response.annotation : a
+      );
+      
+      setAnnotations(updatedAnnotations);
+      
+      if (selectedAnnotation?.id === annotationId) {
+        setSelectedAnnotation(response.annotation);
+      }
+      
+      setEditingAnnotation(null);
+      toast.success('Anotación actualizada');
+    } catch (error) {
+      console.error('Error actualizando:', error);
+      toast.error('Error al actualizar la anotación');
+    }
+  };
+
+  const getFeaturedAnnotationForRange = (start, end) => {
+    const overlappingAnnotations = annotations.filter(a => {
+      return !(a.end_char <= start || a.start_char >= end);
+    });
+    
+    if (overlappingAnnotations.length === 0) return null;
+    return overlappingAnnotations[0];
   };
 
   const renderLyricsWithAnnotations = () => {
@@ -150,9 +260,26 @@ export default function SongDetailPage() {
     let currentIndex = 0;
     const lyrics = song.lyrics;
     
-    const sortedAnnotations = [...annotations].sort((a, b) => a.start_char - b.start_char);
+    const processedRanges = [];
+    const featuredAnnotations = [];
+    
+    const sortedByPosition = [...annotations].sort((a, b) => a.start_char - b.start_char);
+    
+    sortedByPosition.forEach(annotation => {
+      const hasOverlap = processedRanges.some(range => {
+        return !(annotation.end_char <= range.start || annotation.start_char >= range.end);
+      });
+      
+      if (!hasOverlap) {
+        featuredAnnotations.push(annotation);
+        processedRanges.push({
+          start: annotation.start_char,
+          end: annotation.end_char
+        });
+      }
+    });
 
-    sortedAnnotations.forEach((annotation) => {
+    featuredAnnotations.forEach((annotation) => {
       if (currentIndex < annotation.start_char) {
         result.push(
           <span key={`text-${currentIndex}`}>
@@ -164,25 +291,41 @@ export default function SongDetailPage() {
       const isSelected = selectedAnnotation?.id === annotation.id;
       const isHovered = hoveredAnnotation === annotation.id;
       
+      const annotationsInRange = annotations.filter(a => {
+        return !(a.end_char <= annotation.start_char || a.start_char >= annotation.end_char);
+      });
+      
       result.push(
         <span
           key={`annotation-${annotation.id}`}
           className={`
-            cursor-pointer transition-all duration-200 rounded px-1 -mx-1
+            cursor-pointer transition-all duration-200 rounded px-1 -mx-1 relative
             ${isSelected ? 'bg-yellow-300 font-medium' : 'bg-yellow-100'}
+            ${isHovered ? 'bg-yellow-200' : ''}
           `}
           style={{
-            backgroundColor: isHovered && !isSelected ? `${song.artist_color}30` : undefined,
-            borderBottom: isSelected ? `3px solid ${song.artist_color}` : undefined
+            borderBottom: isSelected ? `3px solid ${song.artist_color || '#2563eb'}` : '2px solid #fbbf24'
           }}
           onMouseEnter={() => setHoveredAnnotation(annotation.id)}
           onMouseLeave={() => setHoveredAnnotation(null)}
           onClick={() => {
-            setSelectedAnnotation(isSelected ? null : annotation);
+            if (annotationsInRange.length > 1) {
+              const currentIndex = annotationsInRange.findIndex(a => a.id === selectedAnnotation?.id);
+              const nextIndex = (currentIndex + 1) % annotationsInRange.length;
+              setSelectedAnnotation(annotationsInRange[nextIndex]);
+            } else {
+              setSelectedAnnotation(isSelected ? null : annotation);
+            }
             setShowAnnotationForm(false);
           }}
         >
           {lyrics.substring(annotation.start_char, annotation.end_char)}
+          
+          {annotationsInRange.length > 1 && (
+            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+              {annotationsInRange.length}
+            </span>
+          )}
         </span>
       );
 
@@ -200,10 +343,22 @@ export default function SongDetailPage() {
     return result;
   };
 
+  const getAnnotationsForSelected = () => {
+    if (!selectedAnnotation) return [];
+    
+    return annotations.filter(a => {
+      return !(a.end_char <= selectedAnnotation.start_char || 
+               a.start_char >= selectedAnnotation.end_char);
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Cargando canción...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando canción...</p>
+        </div>
       </div>
     );
   }
@@ -221,8 +376,10 @@ export default function SongDetailPage() {
     );
   }
 
+  const annotationsForSelected = getAnnotationsForSelected();
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-32">
       {/* Header */}
       <div 
         className="py-12 px-4"
@@ -272,6 +429,20 @@ export default function SongDetailPage() {
                   <MessageSquare size={16} />
                   <span>{annotations.length} anotación{annotations.length !== 1 ? 'es' : ''}</span>
                 </div>
+                
+                {/* 👇 NUEVO: Indicador de Spotify */}
+                {isLoadingSpotify && (
+                  <div className="flex items-center gap-1 text-green-600">
+                    <Music size={16} className="animate-pulse" />
+                    <span>Buscando en Spotify...</span>
+                  </div>
+                )}
+                {!isLoadingSpotify && spotifyTrack && (
+                  <div className="flex items-center gap-1 text-green-600">
+                    <Music size={16} />
+                    <span>Disponible en Spotify</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -323,18 +494,49 @@ export default function SongDetailPage() {
               )}
 
               {selectedAnnotation && !showAnnotationForm && (
-                <AnnotationItem
-                  // CORRECCIÓN CLAVE: Usar el ID como key para forzar la recreación del componente
-                  // y asegurar que reciba la prop 'onVote' correctamente.
-                  key={selectedAnnotation.id} 
-                  annotation={selectedAnnotation}
-                  artistColor={song.artist_color || '#2563eb'}
-                  currentUser={user}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onVote={handleVote}
-                  onClose={() => setSelectedAnnotation(null)}
-                />
+                <div className="space-y-4">
+                  <AnnotationItem
+                    key={selectedAnnotation.id}
+                    annotation={selectedAnnotation}
+                    artistColor={song.artist_color || '#2563eb'}
+                    currentUser={user}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onVote={handleVote}
+                    onClose={() => setSelectedAnnotation(null)}
+                  />
+                  
+                  {annotationsForSelected.length > 1 && (
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Otras anotaciones para este texto ({annotationsForSelected.length - 1})
+                      </h3>
+                      <div className="space-y-2">
+                        {annotationsForSelected
+                          .filter(a => a.id !== selectedAnnotation.id)
+                          .map(annotation => (
+                            <button
+                              key={annotation.id}
+                              onClick={() => setSelectedAnnotation(annotation)}
+                              className="w-full text-left p-3 bg-white rounded border border-gray-200 hover:border-blue-400 hover:shadow transition-all"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {annotation.display_name || annotation.username}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  👍 {(annotation.upvotes || 0) - (annotation.downvotes || 0)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600 line-clamp-2">
+                                {annotation.explanation}
+                              </p>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {!selectedAnnotation && !showAnnotationForm && (
@@ -352,6 +554,17 @@ export default function SongDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de edición */}
+      {editingAnnotation && (
+        <AnnotationEditModal
+          annotation={editingAnnotation}
+          onClose={() => setEditingAnnotation(null)}
+          onSubmit={handleEditSubmit}
+        />
+      )}
+
+      {/* 👇 NUEVO: Reproductor de Spotify */}
+      <SpotifyPlayer track={spotifyTrack} />
     </div>
   );
-}

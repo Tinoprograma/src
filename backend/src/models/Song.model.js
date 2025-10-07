@@ -42,6 +42,27 @@ const Song = sequelize.define('Song', {
   },
   created_by: {
     type: DataTypes.INTEGER
+  },
+  // 👇 NUEVOS CAMPOS PARA SPOTIFY
+  spotify_track_id: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'ID del track en Spotify'
+  },
+  spotify_uri: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'URI de Spotify (spotify:track:xxxx)'
+  },
+  spotify_preview_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'URL de vista previa de 30 segundos'
+  },
+  spotify_external_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'URL pública de Spotify'
   }
 }, {
   tableName: 'songs',
