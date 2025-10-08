@@ -70,6 +70,7 @@ app.use('/api/songs', require('./routes/songs.routes'));
 app.use('/api/annotations', require('./routes/annotations.routes'));
 app.use('/api/artists', require('./routes/artists.routes'));
 app.use('/api/albums', require('./routes/albums.routes'));
+app.use('/api/admin', require('./routes/admin.routes'));
 
 // Health check
 app.get('/health', (req, res) => {

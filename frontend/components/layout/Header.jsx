@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Shield } from 'lucide-react';
 import { Music, Search, User, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import Button from '../ui/Button';
@@ -14,6 +15,13 @@ export default function Header() {
             <Music className="text-primary-600" size={32} />
             <span className="text-2xl font-bold text-primary-600">Sabelo</span>
           </Link>
+
+          {user && user.role === 'admin' && (
+          <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-red-500 hover:text-red-600">
+              <Shield size={20} />
+              Admin
+              </Link>
+          )}
 
           <div className="hidden md:flex flex-1 max-w-md mx-8">
             <div className="relative w-full">
