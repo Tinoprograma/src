@@ -1,125 +1,119 @@
 const sequelize = require('../config/database');
-const Annotation = require('../models/Annotation.model.js');
 
-class AnnotationsController {
-  // Obtener anotaciones de una canción
-  async getBySong(req, res) {
+class ArtistsController {
+  async getAll(req, res) {
     try {
-      const { song_id } = req.params;
-      const { page = 1, limit = 20, sort = 'votes' } = req.query;
+      const { page = 1, limit = 100 } = req.query;
       const offset = (page - 1) * limit;
 
-      let orderBy = 'a.created_at DESC';
-      if (sort === 'votes') {
-        orderBy = 'a.upvotes DESC, a.downvotes ASC';
-      }
-
-      // 👇 QUERY CORREGIDA CON is_verified
-      const [annotations, total] = await Promise.all([
+      const [artists, total] = await Promise.all([
         sequelize.query(
-          `SELECT a.*, 
-                  u.username, u.display_name, u.reputation_score,
-                  (a.upvotes - a.downvotes) as score
-           FROM annotations a
-           LEFT JOIN users u ON a.user_id = u.id
-           WHERE a.song_id = :song_id AND a.status = 'active'
-           ORDER BY ${orderBy}
-           LIMIT :limit OFFSET :offset`,
+          'SELECT * FROM artists ORDER BY name ASC LIMIT :limit OFFSET :offset',
           {
-            replacements: { song_id, limit: parseInt(limit), offset },
+            replacements: { limit: parseInt(limit), offset },
             type: sequelize.QueryTypes.SELECT
           }
         ),
         sequelize.query(
-          'SELECT COUNT(*) as total FROM annotations WHERE song_id = :song_id AND status = "active"',
-          {
-            replacements: { song_id },
-            type: sequelize.QueryTypes.SELECT
-          }
+          'SELECT COUNT(*) as total FROM artists',
+          { type: sequelize.QueryTypes.SELECT }
         )
       ]);
 
       res.json({
-        annotations,
+        artists,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: total[0].total,
-          pages: Math.ceil(total[0].total / limit)
+          total: total[0].total
         }
       });
     } catch (error) {
-      console.error('❌ Error obteniendo anotaciones:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      console.error('❌ Error obteniendo artistas:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
     }
   }
 
-  // Crear nueva anotación
   async create(req, res) {
     try {
-      const {
-        song_id,
-        text_selection,
-        start_char,
-        end_char,
-        explanation,
-        cultural_context
-      } = req.body;
+      // 1. Obtener el ID del usuario del token
+      const userId = req.user ? req.user.id : null;
+      
+      // 2. Desestructuración de los datos
+      const { name, country_code, bio } = req.body;
 
-      const user_id = req.user.id;
+      // 3. Validación básica
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: 'El nombre del artista es requerido' });
+      }
 
-      console.log('📝 Creando anotación:', {
-        song_id,
-        user_id,
-        text_selection: text_selection.substring(0, 50) + '...'
-      });
+      // 4. Generación del slug
+      const slug = name.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
+        .replace(/[^\w\s-]/g, '') // Eliminar caracteres especiales
+        .replace(/[\s_-]+/g, '-') // Reemplazar espacios con guiones
+        .replace(/^-+|-+$/g, ''); // Eliminar guiones al inicio/final
 
-      const [result] = await sequelize.query(
-        `INSERT INTO annotations 
-         (song_id, user_id, text_selection, start_char, end_char, explanation, cultural_context, status)
-         VALUES (:song_id, :user_id, :text_selection, :start_char, :end_char, :explanation, :cultural_context, 'active')`,
+      // 5. Verificar si el slug ya existe
+      const [existingArtist] = await sequelize.query(
+        'SELECT * FROM artists WHERE slug = :slug',
         {
-          replacements: {
-            song_id,
-            user_id,
-            text_selection,
-            start_char,
-            end_char,
-            explanation,
-            cultural_context
+          replacements: { slug },
+          type: sequelize.QueryTypes.SELECT
+        }
+      );
+
+      // Si existe, agregar número al slug
+      let finalSlug = slug;
+      if (existingArtist) {
+        const timestamp = Date.now();
+        finalSlug = `${slug}-${timestamp}`;
+      }
+
+      console.log('📝 Creando artista:', { name, slug: finalSlug, country_code });
+
+      // 6. Inserción SQL con todos los campos
+      const [result] = await sequelize.query(
+        `INSERT INTO artists (name, slug, country_code, bio, user_id) 
+         VALUES (:name, :slug, :country_code, :bio, :user_id)`,
+        {
+          replacements: { 
+            name: name.trim(), 
+            slug: finalSlug, 
+            country_code: country_code || null, 
+            bio: bio || null, 
+            user_id: userId 
           }
         }
       );
 
-      // Incrementar contador de anotaciones de la canción
-      await sequelize.query(
-        'UPDATE songs SET annotation_count = annotation_count + 1 WHERE id = :song_id',
-        { replacements: { song_id } }
-      );
-
-      // 👇 QUERY CORREGIDA para obtener la anotación con is_verified
-      const [newAnnotation] = await sequelize.query(
-        `SELECT a.*, u.username, u.display_name 
-         FROM annotations a
-         LEFT JOIN users u ON a.user_id = u.id
-         WHERE a.id = :id`,
+      // 7. Obtener el artista creado
+      const [newArtist] = await sequelize.query(
+        'SELECT * FROM artists WHERE id = :id',
         {
           replacements: { id: result },
           type: sequelize.QueryTypes.SELECT
         }
       );
 
-      console.log('✅ Anotación creada:', newAnnotation.id);
+      console.log('✅ Artista creado exitosamente:', newArtist.name);
 
-      res.status(201).json({
-        message: 'Anotación creada exitosamente',
-        annotation: newAnnotation
+      res.status(201).json({ 
+        message: 'Artista creado exitosamente', 
+        artist: newArtist
       });
+
     } catch (error) {
-      console.error('❌ Error creando anotación:', error);
+      console.error('❌ Error creando artista:', error);
+      console.error('Stack:', error.stack);
+      
+      // Manejo específico de errores de MySQL
+      if (error.original && error.original.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ 
+          message: 'Ya existe un artista con ese nombre' 
+        });
+      }
+      
       res.status(500).json({ 
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -127,158 +121,125 @@ class AnnotationsController {
     }
   }
 
-  // Votar anotación
-  async vote(req, res) {
+  async getById(req, res) {
     try {
       const { id } = req.params;
-      const { vote_type } = req.body; // 'up' or 'down'
-      const user_id = req.user.id;
 
-      if (!['up', 'down'].includes(vote_type)) {
-        return res.status(400).json({ message: 'Tipo de voto inválido' });
-      }
-
-      const [annotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
+      const [artist] = await sequelize.query(
+        'SELECT * FROM artists WHERE id = :id',
         {
           replacements: { id },
           type: sequelize.QueryTypes.SELECT
         }
       );
 
-      if (!annotation) {
-        return res.status(404).json({ message: 'Anotación no encontrada' });
+      if (!artist) {
+        return res.status(404).json({ message: 'Artista no encontrado' });
       }
 
-      // TODO: Verificar si ya votó (implementar tabla de votos)
-      // Por ahora simplemente incrementamos
-
-      const column = vote_type === 'up' ? 'upvotes' : 'downvotes';
-      await sequelize.query(
-        `UPDATE annotations SET ${column} = ${column} + 1 WHERE id = :id`,
-        { replacements: { id } }
-      );
-
-      const [updatedAnnotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      console.log(`👍 Voto ${vote_type} registrado en anotación:`, id);
-
-      res.json({
-        message: 'Voto registrado',
-        annotation: updatedAnnotation
-      });
+      res.json({ artist });
     } catch (error) {
-      console.error('❌ Error votando anotación:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      console.error('❌ Error obteniendo artista:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
     }
   }
 
-  // Actualizar anotación
   async update(req, res) {
     try {
       const { id } = req.params;
-      const { explanation, cultural_context } = req.body;
-      const user_id = req.user.id;
+      const { name, country_code, bio } = req.body;
 
-      const [annotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
+      const [artist] = await sequelize.query(
+        'SELECT * FROM artists WHERE id = :id',
         {
           replacements: { id },
           type: sequelize.QueryTypes.SELECT
         }
       );
 
-      if (!annotation) {
-        return res.status(404).json({ message: 'Anotación no encontrada' });
+      if (!artist) {
+        return res.status(404).json({ message: 'Artista no encontrado' });
       }
 
-      if (annotation.user_id !== user_id) {
-        return res.status(403).json({ message: 'No tienes permiso para editar esta anotación' });
+      // Regenerar slug si cambia el nombre
+      let slug = artist.slug;
+      if (name && name !== artist.name) {
+        slug = name.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^\w\s-]/g, '')
+          .replace(/[\s_-]+/g, '-')
+          .replace(/^-+|-+$/g, '');
       }
 
       await sequelize.query(
-        'UPDATE annotations SET explanation = :explanation, cultural_context = :cultural_context WHERE id = :id',
+        `UPDATE artists 
+         SET name = :name, slug = :slug, country_code = :country_code, bio = :bio
+         WHERE id = :id`,
         {
-          replacements: { id, explanation, cultural_context }
+          replacements: { id, name, slug, country_code, bio }
         }
       );
 
-      const [updatedAnnotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
+      const [updatedArtist] = await sequelize.query(
+        'SELECT * FROM artists WHERE id = :id',
         {
           replacements: { id },
           type: sequelize.QueryTypes.SELECT
         }
       );
 
-      console.log('✅ Anotación actualizada:', id);
-
       res.json({
-        message: 'Anotación actualizada exitosamente',
-        annotation: updatedAnnotation
+        message: 'Artista actualizado exitosamente',
+        artist: updatedArtist
       });
     } catch (error) {
-      console.error('❌ Error actualizando anotación:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      console.error('❌ Error actualizando artista:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
     }
   }
 
-  // Eliminar anotación
   async delete(req, res) {
     try {
       const { id } = req.params;
-      const user_id = req.user.id;
 
-      const [annotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
+      const [artist] = await sequelize.query(
+        'SELECT * FROM artists WHERE id = :id',
         {
           replacements: { id },
           type: sequelize.QueryTypes.SELECT
         }
       );
 
-      if (!annotation) {
-        return res.status(404).json({ message: 'Anotación no encontrada' });
+      if (!artist) {
+        return res.status(404).json({ message: 'Artista no encontrado' });
       }
 
-      if (annotation.user_id !== user_id) {
-        return res.status(403).json({ message: 'No tienes permiso para eliminar esta anotación' });
+      // Verificar si tiene canciones asociadas
+      const [songs] = await sequelize.query(
+        'SELECT COUNT(*) as count FROM songs WHERE artist_id = :id',
+        {
+          replacements: { id },
+          type: sequelize.QueryTypes.SELECT
+        }
+      );
+
+      if (songs.count > 0) {
+        return res.status(400).json({ 
+          message: 'No se puede eliminar el artista porque tiene canciones asociadas' 
+        });
       }
 
       await sequelize.query(
-        'UPDATE annotations SET status = "deleted" WHERE id = :id',
+        'DELETE FROM artists WHERE id = :id',
         { replacements: { id } }
       );
 
-      // Decrementar contador
-      await sequelize.query(
-        'UPDATE songs SET annotation_count = annotation_count - 1 WHERE id = :song_id',
-        { replacements: { song_id: annotation.song_id } }
-      );
-
-      console.log('🗑️  Anotación eliminada:', id);
-
-      res.json({ message: 'Anotación eliminada exitosamente' });
+      res.json({ message: 'Artista eliminado exitosamente' });
     } catch (error) {
-      console.error('❌ Error eliminando anotación:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      console.error('❌ Error eliminando artista:', error);
+      res.status(500).json({ message: 'Error interno del servidor' });
     }
   }
 }
 
-module.exports = new AnnotationsController();
+module.exports = new ArtistsController();

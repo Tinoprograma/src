@@ -47,7 +47,6 @@ export default function CreateSongPage() {
   }, []);
 
   useEffect(() => {
-    // Cuando cambia el artista, cargar sus álbumes
     if (formData.artist_id) {
       fetchAlbumsByArtist(formData.artist_id);
     } else {
@@ -85,7 +84,6 @@ export default function CreateSongPage() {
       setErrors({ ...errors, [name]: '' });
     }
 
-    // Si marca como single, limpiar campos de álbum
     if (name === 'is_single' && checked) {
       setFormData(prev => ({
         ...prev,
@@ -205,7 +203,6 @@ export default function CreateSongPage() {
     try {
       setIsLoading(true);
       
-      // Si es single, asegurarse de que album_id y track_number sean null
       const songData = {
         ...formData,
         album_id: formData.is_single ? null : formData.album_id,
@@ -271,93 +268,7 @@ export default function CreateSongPage() {
                   name="artist_id"
                   value={formData.artist_id}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono ${
-                errors.lyrics ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="[Intro]&#10;Texto de la canción...&#10;&#10;[Verse 1]&#10;Más letras..."
-              required
-            />
-            {errors.lyrics && (
-              <p className="mt-1 text-sm text-red-600">{errors.lyrics}</p>
-            )}
-            <p className="mt-1 text-sm text-gray-500">
-              Incluye la estructura de la canción (Intro, Verse, Chorus, etc.)
-            </p>
-          </div>
-
-          {/* Año de lanzamiento */}
-          <Input
-            label="Año de lanzamiento"
-            name="release_year"
-            type="number"
-            value={formData.release_year}
-            onChange={handleChange}
-            error={errors.release_year}
-            min="1900"
-            max={new Date().getFullYear() + 1}
-            placeholder={new Date().getFullYear().toString()}
-          />
-
-          {/* URL de portada (opcional) */}
-          <Input
-            label="URL de portada (opcional)"
-            name="cover_image_url"
-            value={formData.cover_image_url}
-            onChange={handleChange}
-            placeholder="https://ejemplo.com/portada.jpg"
-            helperText="URL de la imagen de portada de la canción o álbum"
-          />
-
-          {/* Botones */}
-          <div className="flex gap-4 pt-4">
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? 'Creando...' : 'Crear Canción'}
-            </Button>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              onClick={() => navigate('/songs')}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* Tips */}
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-semibold text-blue-900 mb-2">
-          💡 Tips para agregar canciones
-        </h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Asegúrate de que las letras sean precisas</li>
-          <li>• Incluye la estructura de la canción ([Intro], [Verse], [Chorus], etc.)</li>
-          <li>• Verifica que el artista y año de lanzamiento sean correctos</li>
-          <li>• <strong>Si es parte de un álbum:</strong> desmarca "Es un single" y selecciona el álbum</li>
-          <li>• <strong>Si es un single:</strong> mantén marcada la casilla "Es un single"</li>
-          <li>• Las canciones deben ser de música hispanohablante</li>
-        </ul>
-      </div>
-
-      {/* Info sobre álbumes */}
-      <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-6">
-        <h3 className="font-semibold text-purple-900 mb-2">
-          📀 Sobre álbumes vs singles
-        </h3>
-        <div className="text-sm text-purple-800 space-y-2">
-          <p>
-            <strong>Single:</strong> Una canción lanzada de forma independiente, no pertenece a ningún álbum.
-          </p>
-          <p>
-            <strong>Canción de álbum:</strong> Forma parte de un álbum y tiene un número de track específico.
-            Todas las canciones del mismo álbum aparecerán juntas en un tracklist.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-} py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                     errors.artist_id ? 'border-red-500' : 'border-gray-300'
                   }`}
                   required
@@ -582,3 +493,77 @@ export default function CreateSongPage() {
               Incluye la estructura de la canción (Intro, Verse, Chorus, etc.)
             </p>
           </div>
+
+          {/* Año de lanzamiento */}
+          <Input
+            label="Año de lanzamiento"
+            name="release_year"
+            type="number"
+            value={formData.release_year}
+            onChange={handleChange}
+            error={errors.release_year}
+            min="1900"
+            max={new Date().getFullYear() + 1}
+            placeholder={new Date().getFullYear().toString()}
+          />
+
+          {/* URL de portada (opcional) */}
+          <Input
+            label="URL de portada (opcional)"
+            name="cover_image_url"
+            value={formData.cover_image_url}
+            onChange={handleChange}
+            placeholder="https://ejemplo.com/portada.jpg"
+            helperText="URL de la imagen de portada de la canción o álbum"
+          />
+
+          {/* Botones */}
+          <div className="flex gap-4 pt-4">
+            <Button type="submit" disabled={isLoading} className="flex-1">
+              {isLoading ? 'Creando...' : 'Crear Canción'}
+            </Button>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => navigate('/songs')}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* Tips */}
+      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 className="font-semibold text-blue-900 mb-2">
+          💡 Tips para agregar canciones
+        </h3>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>• Asegúrate de que las letras sean precisas</li>
+          <li>• Incluye la estructura de la canción ([Intro], [Verse], [Chorus], etc.)</li>
+          <li>• Verifica que el artista y año de lanzamiento sean correctos</li>
+          <li>• <strong>Si es parte de un álbum:</strong> desmarca "Es un single" y selecciona el álbum</li>
+          <li>• <strong>Si es un single:</strong> mantén marcada la casilla "Es un single"</li>
+          <li>• Las canciones deben ser de música hispanohablante</li>
+        </ul>
+      </div>
+
+      {/* Info sobre álbumes */}
+      <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-6">
+        <h3 className="font-semibold text-purple-900 mb-2">
+          📀 Sobre álbumes vs singles
+        </h3>
+        <div className="text-sm text-purple-800 space-y-2">
+          <p>
+            <strong>Single:</strong> Una canción lanzada de forma independiente, no pertenece a ningún álbum.
+          </p>
+          <p>
+            <strong>Canción de álbum:</strong> Forma parte de un álbum y tiene un número de track específico.
+            Todas las canciones del mismo álbum aparecerán juntas en un tracklist.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
