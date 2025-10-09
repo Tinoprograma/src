@@ -11,13 +11,20 @@ export default function Header() {
   const { pathname } = useLocation();
 
   // Cerrar menú al cambiar de ruta
-  useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   // Bloquear scroll cuando el menú está abierto (mobile)
   useEffect(() => {
-    if (open) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
-    return () => { document.body.style.overflow = ''; };
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [open]);
 
   return (
@@ -41,16 +48,21 @@ export default function Header() {
                 </span>
               </span>
             </Link>
-            
-            {user && user.role === 'admin' && (
-              <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-red-500 hover:text-red-600">
-                <Shield size={20} />
-                Admin
-              </Link>
-            )}           
 
             {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-3">
+            <nav className="hidden md:flex items-center gap-6">
+              {/* Admin Link */}
+              {user && user.role === 'admin' && (
+                <Link
+                  to="/admin"
+                  className="flex items-center gap-2 px-3 py-2 text-red-500 hover:text-red-600 font-medium transition"
+                >
+                  <Shield size={20} />
+                  Admin
+                </Link>
+              )}
+
+              {/* Canciones Link */}
               <Link
                 to="/songs"
                 className="px-3 py-2 text-gray-700 font-medium hover:text-gray-900 hover:underline underline-offset-4 decoration-fuchsia-400/60 rounded-lg transition"
@@ -58,6 +70,7 @@ export default function Header() {
                 Canciones
               </Link>
 
+              {/* Auth Section */}
               {isAuthenticated ? (
                 <>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200">
@@ -106,7 +119,7 @@ export default function Header() {
               aria-label="Abrir menú"
               aria-controls="mobile-menu"
               aria-expanded={open}
-              onClick={() => setOpen(o => !o)}
+              onClick={() => setOpen(!open)}
               className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg hover:bg-gray-100 text-gray-700"
             >
               {open ? <X size={22} /> : <Menu size={22} />}
@@ -115,18 +128,23 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Overlay + Panel mobile */}
+      {/* Mobile Menu - Overlay + Panel */}
       {/* Overlay */}
-      <div
-        className={`fixed inset-0 bg-black/30 transition-opacity md:hidden ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        onClick={() => setOpen(false)}
-      />
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/30 md:hidden"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Panel */}
       <div
         id="mobile-menu"
-        className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-xl border-l border-gray-200 transform transition-transform md:hidden
+        className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-xl border-l border-gray-200 transform transition-transform duration-300 md:hidden
         ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        role="navigation"
+        aria-hidden={!open}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -145,6 +163,18 @@ export default function Header() {
         </div>
 
         <nav className="p-4 flex flex-col gap-2">
+          {/* Admin Link */}
+          {user && user.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-2 px-3 py-3 rounded-lg text-red-500 hover:bg-red-50 font-medium"
+            >
+              <Shield size={20} />
+              Admin
+            </Link>
+          )}
+
+          {/* Canciones Link */}
           <Link
             to="/songs"
             className="px-3 py-3 rounded-lg text-gray-800 hover:bg-gray-100 font-medium"
@@ -154,6 +184,7 @@ export default function Header() {
 
           <div className="my-2 h-px bg-gray-200" />
 
+          {/* Auth Section */}
           {isAuthenticated ? (
             <>
               <div className="flex items-center gap-2 px-3 py-3 rounded-lg border border-gray-200">
@@ -182,7 +213,7 @@ export default function Header() {
                   Iniciar Sesión
                 </Button>
               </Link>
-              <Link to="/register">
+              <Link to="/register" className="w-full">
                 <Button
                   variant="primary"
                   className="w-full rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-sm"
