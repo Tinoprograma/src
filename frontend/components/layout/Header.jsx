@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Shield } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Music, User, LogIn, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -40,6 +41,13 @@ export default function Header() {
                 </span>
               </span>
             </Link>
+            
+            {user && user.role === 'admin' && (
+              <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-red-500 hover:text-red-600">
+                <Shield size={20} />
+                Admin
+              </Link>
+            )}           
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-3">

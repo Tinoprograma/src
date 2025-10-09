@@ -11,22 +11,46 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Función auxiliar para guardar el usuario en localStorage
+  const storeUserInLocalStorage = (user) => {
+    // Almacenar un subconjunto de datos del usuario incluyendo el 'role'
+    const userToStore = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      display_name: user.display_name, // Opcional, si existe
+      role: user.role // 
+    };
+    localStorage.setItem('user', JSON.stringify(userToStore));
+  };
+    
   // Verificar si hay token al cargar
   useEffect(() => {
     const token = localStorage.getItem('token');
+    // Adicionalmente, cargar el usuario de localStorage si existe
+    const storedUser = localStorage.getItem('user');
+
     if (token) {
       // Verificar token con el backend
       api.get('/auth/me')
         .then(response => {
-          setUser(response.data.user);
+          // Usar los datos frescos del backend
+          setUser(response.data.user); 
           setIsAuthenticated(true);
+          // Opcional: Re-almacenar para asegurar que el 'user' en localStorage esté actualizado
+          storeUserInLocalStorage(response.data.user);
         })
         .catch(() => {
           localStorage.removeItem('token');
+          localStorage.removeItem('user'); // Limpiar también el user si el token falla
         })
         .finally(() => {
           setIsLoading(false);
         });
+    } else if (storedUser) {
+        // Limpiar 'user' si no hay 'token', para evitar inconsistencias
+        localStorage.removeItem('user');
+        setIsLoading(false);
     } else {
       setIsLoading(false);
     }
@@ -38,6 +62,9 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
+      // Cuando hagas login
+      storeUserInLocalStorage(user); // ← Agregado para guardar el objeto 'user' simplificado con 'role'
+      
       setUser(user);
       setIsAuthenticated(true);
       
@@ -58,6 +85,9 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
+      // Agregado también en register para consistencia
+      storeUserInLocalStorage(user); // ← Agregado para guardar el objeto 'user' simplificado con 'role'
+      
       setUser(user);
       setIsAuthenticated(true);
       
@@ -74,6 +104,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user'); // ← Limpiar también el 'user' al cerrar sesión
     setUser(null);
     setIsAuthenticated(false);
     toast.success('Sesión cerrada');
