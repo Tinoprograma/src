@@ -1,327 +1,375 @@
-const sequelize = require('../config/database');
-const Song = require('../models/Song.model.js');
+const songRepository = require('../repositories/song.repository');
+const { AppError, asyncHandler } = require('../middleware/errorHandler.middleware');
+const logger = require('../utils/logger');
 
 class SongsController {
-  // Obtener todas las canciones con paginación
-  async getAll(req, res) {
-    try {
-      const { page = 1, limit = 20, search = '' } = req.query;
-      const offset = (page - 1) * limit;
+  /**
+   * GET /api/songs
+   * Obtener todas las canciones con paginación, filtros y búsqueda
+   */
+  getAll = asyncHandler(async (req, res) => {
+    const {
+      page = 1,
+      limit = 20,
+      search = null,
+      artist_id = null,
+      album_id = null,
+      is_single = null,
+      sort = 'recent'
+    } = req.query;
 
-      let whereClause = '';
-      let replacements = { limit: parseInt(limit), offset };
+    logger.info('Obteniendo canciones', {
+      user: req.user?.id,
+      filters: { search, artist_id, album_id, is_single, sort },
+      pagination: { page, limit }
+    });
 
-      if (search) {
-        whereClause = 'WHERE s.title LIKE :search OR a.name LIKE :search';
-        replacements.search = `%${search}%`;
+    const filters = {
+      search: search ? search.trim() : null,
+      artist_id: artist_id ? parseInt(artist_id) : null,
+      album_id: album_id ? parseInt(album_id) : null,
+      is_single: is_single ? is_single === 'true' : null,
+      sort
+    };
+
+    const result = await songRepository.getAll(filters, { page, limit });
+
+    res.json({
+      success: true,
+      songs: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
       }
+    });
+  });
 
-      const [songs, total] = await Promise.all([
-        sequelize.query(
-          `SELECT s.*, a.name as artist_name 
-           FROM songs s 
-           LEFT JOIN artists a ON s.artist_id = a.id 
-           ${whereClause}
-           ORDER BY s.created_at DESC 
-           LIMIT :limit OFFSET :offset`,
-          {
-            replacements,
-            type: sequelize.QueryTypes.SELECT
-          }
-        ),
-        sequelize.query(
-          `SELECT COUNT(*) as total FROM songs s LEFT JOIN artists a ON s.artist_id = a.id ${whereClause}`,
-          { 
-            replacements: search ? { search: `%${search}%` } : {},
-            type: sequelize.QueryTypes.SELECT 
-          }
-        )
-      ]);
+  /**
+   * GET /api/songs/:id
+   * Obtener canción por ID
+   */
+  getById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-      res.json({
-        songs,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: total[0].total,
-          pages: Math.ceil(total[0].total / limit)
-        }
-      });
-    } catch (error) {
-      console.error('❌ Error obteniendo canciones:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    logger.info('Obteniendo canción por ID', { song_id: id, user: req.user?.id });
+
+    const song = await songRepository.getById(id);
+    if (!song) {
+      throw new AppError('Canción no encontrada', 404);
     }
-  }
 
-  // Obtener canción por ID
-  async getById(req, res) {
-    try {
-      const { id } = req.params;
+    // Incrementar view count
+    await songRepository.incrementViews(id);
 
-      const [song] = await sequelize.query(
-        `SELECT s.*, a.name as artist_name, a.slug as artist_slug
-         FROM songs s
-         LEFT JOIN artists a ON s.artist_id = a.id
-         WHERE s.id = :id`,
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+    res.json({
+      success: true,
+      song
+    });
+  });
 
-      if (!song) {
-        return res.status(404).json({ message: 'Canción no encontrada' });
-      }
+  /**
+   * GET /api/songs/search/:query
+   * Buscar canciones por texto completo
+   */
+  search = asyncHandler(async (req, res) => {
+    const { query } = req.params;
+    const { page = 1, limit = 20 } = req.query;
 
-      // Incrementar view_count
-      await sequelize.query(
-        'UPDATE songs SET view_count = view_count + 1 WHERE id = :id',
-        { replacements: { id } }
-      );
-
-      res.json({ song });
-    } catch (error) {
-      console.error('❌ Error obteniendo canción:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    if (!query || query.trim().length < 2) {
+      throw new AppError('La búsqueda debe tener al menos 2 caracteres', 400);
     }
-  }
 
-  // Crear nueva canción
-  async create(req, res) {
+    logger.info('Buscando canciones', { query, page, limit });
+
+    const result = await songRepository.search(query.trim(), { page, limit });
+
+    res.json({
+      success: true,
+      songs: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
+
+  /**
+   * GET /api/songs/trending
+   * Obtener canciones trending
+   */
+  getTrending = asyncHandler(async (req, res) => {
+    const { limit = 10 } = req.query;
+
+    logger.info('Obteniendo canciones trending');
+
+    const songs = await songRepository.getTrending(parseInt(limit));
+
+    res.json({
+      success: true,
+      songs
+    });
+  });
+
+  /**
+   * GET /api/songs/artist/:artist_id
+   * Obtener canciones de un artista
+   */
+  getByArtist = asyncHandler(async (req, res) => {
+    const { artist_id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    logger.info('Obteniendo canciones del artista', {
+      artist_id,
+      pagination: { page, limit }
+    });
+
+    const result = await songRepository.getSongsByArtist(
+      parseInt(artist_id),
+      { page, limit }
+    );
+
+    res.json({
+      success: true,
+      songs: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
+
+  /**
+   * GET /api/songs/album/:album_id
+   * Obtener canciones de un álbum
+   */
+  getByAlbum = asyncHandler(async (req, res) => {
+    const { album_id } = req.params;
+
+    logger.info('Obteniendo canciones del álbum', { album_id });
+
+    const songs = await songRepository.getSongsByAlbum(parseInt(album_id));
+
+    res.json({
+      success: true,
+      songs
+    });
+  });
+
+  /**
+   * GET /api/songs/:id/stats
+   * Obtener estadísticas de una canción
+   */
+  getStats = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    logger.info('Obteniendo estadísticas de canción', { song_id: id });
+
+    const stats = await songRepository.getStats(id);
+    if (!stats) {
+      throw new AppError('Canción no encontrada', 404);
+    }
+
+    res.json({
+      success: true,
+      stats
+    });
+  });
+
+  /**
+   * POST /api/songs
+   * Crear nueva canción (solo autenticados)
+   */
+  create = asyncHandler(async (req, res) => {
+    const {
+      title,
+      artist_id,
+      album_id,
+      track_number,
+      is_single,
+      lyrics,
+      release_year,
+      cover_image_url
+    } = req.body;
+
+    const userId = req.user?.id;
+
+    // Validación básica
+    if (!title || !title.trim()) {
+      throw new AppError('El título de la canción es requerido', 400);
+    }
+
+    if (!artist_id) {
+      throw new AppError('El artista es requerido', 400);
+    }
+
+    if (!lyrics || !lyrics.trim()) {
+      throw new AppError('Las letras son requeridas', 400);
+    }
+
+    if (!is_single && !album_id) {
+      throw new AppError('Si no es single, debes seleccionar un álbum', 400);
+    }
+
+    if (!is_single && album_id && !track_number) {
+      throw new AppError('El número de track es requerido para canciones de álbum', 400);
+    }
+
+    logger.info('Creando nueva canción', {
+      user: userId,
+      title,
+      artist_id,
+      is_single
+    });
+
     try {
-      const { 
-        title, 
-        artist_id, 
-        album_id, 
-        track_number, 
-        is_single, 
-        lyrics, 
-        release_year,
-        cover_image_url 
-      } = req.body;
-      
-      const created_by = req.user ? req.user.id : null;
-
-      // Validación básica
-      if (!title || !title.trim()) {
-        return res.status(400).json({ message: 'El título es requerido' });
-      }
-
-      if (!artist_id) {
-        return res.status(400).json({ message: 'El artista es requerido' });
-      }
-
-      if (!lyrics || !lyrics.trim()) {
-        return res.status(400).json({ message: 'Las letras son requeridas' });
-      }
-
-      // Validación de álbum
-      if (!is_single && !album_id) {
-        return res.status(400).json({ message: 'Si no es single, debes seleccionar un álbum' });
-      }
-
-      if (!is_single && album_id && !track_number) {
-        return res.status(400).json({ message: 'El número de track es requerido para canciones de álbum' });
-      }
-
-      // Generar slug
-      const slug = title.toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^\w\s-]/g, '')
-        .replace(/[\s_-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-
-      console.log('📝 Creando canción:', { 
-        title, 
-        artist_id, 
-        album_id: album_id || null, 
-        is_single,
-        track_number: track_number || null 
+      const song = await songRepository.create({
+        title,
+        artist_id: parseInt(artist_id),
+        album_id: album_id ? parseInt(album_id) : null,
+        track_number: track_number ? parseInt(track_number) : null,
+        is_single: is_single || false,
+        lyrics,
+        release_year: release_year ? parseInt(release_year) : null,
+        cover_image_url,
+        created_by: userId
       });
 
-      // 🔥 CORRECCIÓN: Inserción SQL con todos los campos correctos
-      const [result] = await sequelize.query(
-        `INSERT INTO songs (
-          title, 
-          artist_id, 
-          album_id, 
-          track_number, 
-          is_single, 
-          slug, 
-          lyrics, 
-          release_year, 
-          cover_image_url, 
-          created_by
-        ) VALUES (
-          :title, 
-          :artist_id, 
-          :album_id, 
-          :track_number, 
-          :is_single, 
-          :slug, 
-          :lyrics, 
-          :release_year, 
-          :cover_image_url, 
-          :created_by
-        )`,
-        {
-          replacements: { 
-            title: title.trim(), 
-            artist_id, 
-            album_id: album_id || null, 
-            track_number: track_number || null, 
-            is_single: is_single ? 1 : 0, 
-            slug, 
-            lyrics: lyrics.trim(), 
-            release_year: release_year || null, 
-            cover_image_url: cover_image_url || null, 
-            created_by 
-          }
-        }
-      );
-
-      // Si pertenece a un álbum, actualizar el total_tracks
-      if (album_id) {
-        await sequelize.query(
-          `UPDATE albums 
-           SET total_tracks = (SELECT COUNT(*) FROM songs WHERE album_id = :album_id)
-           WHERE id = :album_id`,
-          { replacements: { album_id } }
-        );
-      }
-
-      const [newSong] = await sequelize.query(
-        'SELECT * FROM songs WHERE id = :id',
-        {
-          replacements: { id: result },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      console.log('✅ Canción creada exitosamente:', newSong.title);
+      logger.info('Canción creada exitosamente', {
+        song_id: song.id,
+        user: userId
+      });
 
       res.status(201).json({
+        success: true,
         message: 'Canción creada exitosamente',
-        song: newSong
+        song
       });
     } catch (error) {
-      console.error('❌ Error creando canción:', error);
-      console.error('Stack:', error.stack);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  }
-
-  // Actualizar canción
-  async update(req, res) {
-    try {
-      const { id } = req.params;
-      const { 
-        title, 
-        lyrics, 
-        album_id, 
-        track_number, 
-        is_single, 
-        release_year,
-        cover_image_url 
-      } = req.body;
-
-      const [song] = await sequelize.query(
-        'SELECT * FROM songs WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      if (!song) {
-        return res.status(404).json({ message: 'Canción no encontrada' });
+      if (error.code === 'ARTIST_NOT_FOUND') {
+        throw new AppError('El artista no existe', 404);
       }
+      if (error.code === 'ALBUM_NOT_FOUND') {
+        throw new AppError('El álbum no existe', 404);
+      }
+      throw error;
+    }
+  });
 
-      await sequelize.query(
-        `UPDATE songs 
-         SET title = :title, 
-             lyrics = :lyrics, 
-             album_id = :album_id, 
-             track_number = :track_number, 
-             is_single = :is_single, 
-             release_year = :release_year,
-             cover_image_url = :cover_image_url
-         WHERE id = :id`,
-        {
-          replacements: { 
-            id, 
-            title, 
-            lyrics, 
-            album_id: album_id || null, 
-            track_number: track_number || null, 
-            is_single: is_single ? 1 : 0, 
-            release_year,
-            cover_image_url: cover_image_url || null
-          }
-        }
-      );
+  /**
+   * PUT /api/songs/:id
+   * Actualizar canción (solo creador o admin)
+   */
+  update = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const {
+      title,
+      lyrics,
+      album_id,
+      track_number,
+      is_single,
+      release_year,
+      cover_image_url
+    } = req.body;
 
-      const [updatedSong] = await sequelize.query(
-        'SELECT * FROM songs WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    logger.info('Actualizando canción', { song_id: id, user: userId });
+
+    const song = await songRepository.getById(id);
+    if (!song) {
+      throw new AppError('Canción no encontrada', 404);
+    }
+
+    // Verificar permisos
+    if (song.created_by !== userId && userRole !== 'admin') {
+      logger.warn('Intento de actualizar canción sin permisos', {
+        song_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para editar esta canción', 403);
+    }
+
+    const updateData = {};
+    if (title) updateData.title = title.trim();
+    if (lyrics) updateData.lyrics = lyrics.trim();
+    if (album_id !== undefined) updateData.album_id = album_id ? parseInt(album_id) : null;
+    if (track_number !== undefined) updateData.track_number = track_number ? parseInt(track_number) : null;
+    if (is_single !== undefined) updateData.is_single = is_single || false;
+    if (release_year !== undefined) updateData.release_year = release_year ? parseInt(release_year) : null;
+    if (cover_image_url !== undefined) updateData.cover_image_url = cover_image_url;
+
+    try {
+      const updated = await songRepository.update(id, updateData, { id: userId, role: userRole });
+
+      logger.info('Canción actualizada exitosamente', {
+        song_id: id,
+        user: userId
+      });
 
       res.json({
+        success: true,
         message: 'Canción actualizada exitosamente',
-        song: updatedSong
+        song: updated
       });
     } catch (error) {
-      console.error('❌ Error actualizando canción:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      if (error.code === 'FORBIDDEN') {
+        throw new AppError(error.message, 403);
+      }
+      throw error;
     }
-  }
+  });
 
-  // Eliminar canción
-  async delete(req, res) {
+  /**
+   * DELETE /api/songs/:id
+   * Eliminar canción (solo creador o admin)
+   */
+  delete = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    logger.info('Eliminando canción', { song_id: id, user: userId });
+
+    const song = await songRepository.getById(id);
+    if (!song) {
+      throw new AppError('Canción no encontrada', 404);
+    }
+
+    // Verificar permisos
+    if (song.created_by !== userId && userRole !== 'admin') {
+      logger.warn('Intento de eliminar canción sin permisos', {
+        song_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para eliminar esta canción', 403);
+    }
+
     try {
-      const { id } = req.params;
+      await songRepository.delete(id, { id: userId, role: userRole });
 
-      const [song] = await sequelize.query(
-        'SELECT * FROM songs WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+      logger.info('Canción eliminada exitosamente', {
+        song_id: id,
+        user: userId
+      });
 
-      if (!song) {
-        return res.status(404).json({ message: 'Canción no encontrada' });
-      }
-
-      const album_id = song.album_id;
-
-      await sequelize.query(
-        'DELETE FROM songs WHERE id = :id',
-        { replacements: { id } }
-      );
-
-      // Actualizar total_tracks del álbum si tenía uno
-      if (album_id) {
-        await sequelize.query(
-          `UPDATE albums 
-           SET total_tracks = (SELECT COUNT(*) FROM songs WHERE album_id = :album_id)
-           WHERE id = :album_id`,
-          { replacements: { album_id } }
-        );
-      }
-
-      res.json({ message: 'Canción eliminada exitosamente' });
+      res.json({
+        success: true,
+        message: 'Canción eliminada exitosamente'
+      });
     } catch (error) {
-      console.error('❌ Error eliminando canción:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      if (error.code === 'FORBIDDEN') {
+        throw new AppError(error.message, 403);
+      }
+      throw error;
     }
-  }
+  });
 }
 
 module.exports = new SongsController();

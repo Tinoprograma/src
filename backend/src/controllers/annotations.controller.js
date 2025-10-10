@@ -1,284 +1,416 @@
-const sequelize = require('../config/database');
-const Annotation = require('../models/Annotation.model.js');
+const annotationRepository = require('../repositories/annotation.repository');
+const songRepository = require('../repositories/song.repository');
+const { AppError, asyncHandler } = require('../middleware/errorHandler.middleware');
+const logger = require('../utils/logger');
 
 class AnnotationsController {
-  // Obtener anotaciones de una canción
-  async getBySong(req, res) {
-    try {
-      const { song_id } = req.params;
-      const { page = 1, limit = 20, sort = 'votes' } = req.query;
-      const offset = (page - 1) * limit;
+  /**
+   * GET /api/annotations/song/:song_id
+   * Obtener anotaciones de una canción
+   */
+  getBySong = asyncHandler(async (req, res) => {
+    const { song_id } = req.params;
+    const { page = 1, limit = 20, sort = 'votes' } = req.query;
 
-      let orderBy = 'a.created_at DESC';
-      if (sort === 'votes') {
-        orderBy = 'a.upvotes DESC, a.downvotes ASC';
+    logger.info('Obteniendo anotaciones de canción', {
+      song_id,
+      sort,
+      pagination: { page, limit }
+    });
+
+    const result = await annotationRepository.getBySong(
+      parseInt(song_id),
+      { sort },
+      { page, limit }
+    );
+
+    res.json({
+      success: true,
+      annotations: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
       }
+    });
+  });
 
-      // 👇 QUERY CORREGIDA CON is_verified
-      const [annotations, total] = await Promise.all([
-        sequelize.query(
-          `SELECT a.*, 
-                  u.username, u.display_name, u.reputation_score,
-                  (a.upvotes - a.downvotes) as score
-           FROM annotations a
-           LEFT JOIN users u ON a.user_id = u.id
-           WHERE a.song_id = :song_id AND a.status = 'active'
-           ORDER BY ${orderBy}
-           LIMIT :limit OFFSET :offset`,
-          {
-            replacements: { song_id, limit: parseInt(limit), offset },
-            type: sequelize.QueryTypes.SELECT
-          }
-        ),
-        sequelize.query(
-          'SELECT COUNT(*) as total FROM annotations WHERE song_id = :song_id AND status = "active"',
-          {
-            replacements: { song_id },
-            type: sequelize.QueryTypes.SELECT
-          }
-        )
-      ]);
+  /**
+   * GET /api/annotations/:id
+   * Obtener anotación por ID
+   */
+  getById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-      res.json({
-        annotations,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: total[0].total,
-          pages: Math.ceil(total[0].total / limit)
-        }
-      });
-    } catch (error) {
-      console.error('❌ Error obteniendo anotaciones:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+    logger.info('Obteniendo anotación por ID', { annotation_id: id });
+
+    const annotation = await annotationRepository.getById(id);
+    if (!annotation) {
+      throw new AppError('Anotación no encontrada', 404);
     }
-  }
 
-  // Crear nueva anotación
-  async create(req, res) {
+    res.json({
+      success: true,
+      annotation
+    });
+  });
+
+  /**
+   * GET /api/annotations/user/:username
+   * Obtener anotaciones de un usuario
+   */
+  getByUser = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    logger.info('Obteniendo anotaciones de usuario', { username });
+
+    const result = await annotationRepository.getByUser(
+      username,
+      { page, limit }
+    );
+
+    res.json({
+      success: true,
+      annotations: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
+
+  /**
+   * GET /api/annotations/verified
+   * Obtener anotaciones verificadas
+   */
+  getVerified = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 20 } = req.query;
+
+    logger.info('Obteniendo anotaciones verificadas', { page, limit });
+
+    const result = await annotationRepository.getVerified({ page, limit });
+
+    res.json({
+      success: true,
+      annotations: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
+
+  /**
+   * GET /api/annotations/:id/stats
+   * Obtener estadísticas de una anotación
+   */
+  getStats = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    logger.info('Obteniendo estadísticas de anotación', { annotation_id: id });
+
+    const stats = await annotationRepository.getStats(id);
+    if (!stats) {
+      throw new AppError('Anotación no encontrada', 404);
+    }
+
+    res.json({
+      success: true,
+      stats
+    });
+  });
+
+  /**
+   * POST /api/annotations
+   * Crear nueva anotación
+   */
+  create = asyncHandler(async (req, res) => {
+    const {
+      song_id,
+      text_selection,
+      start_char,
+      end_char,
+      explanation,
+      cultural_context
+    } = req.body;
+
+    const userId = req.user?.id;
+
+    // Validación básica
+    if (!song_id) {
+      throw new AppError('ID de canción requerido', 400);
+    }
+
+    if (!text_selection || !text_selection.trim()) {
+      throw new AppError('Texto seleccionado requerido', 400);
+    }
+
+    if (text_selection.trim().length > 500) {
+      throw new AppError('Texto seleccionado no puede exceder 500 caracteres', 400);
+    }
+
+    if (start_char === undefined || start_char === null || start_char < 0) {
+      throw new AppError('Posición inicial válida requerida', 400);
+    }
+
+    if (end_char === undefined || end_char === null || end_char <= 0) {
+      throw new AppError('Posición final válida requerida', 400);
+    }
+
+    if (!explanation || explanation.trim().length < 10) {
+      throw new AppError('Explicación debe tener al menos 10 caracteres', 400);
+    }
+
+    logger.info('Creando nueva anotación', {
+      user: userId,
+      song_id,
+      text_length: text_selection.length
+    });
+
     try {
-      const {
-        song_id,
+      const annotation = await annotationRepository.create({
+        song_id: parseInt(song_id),
+        user_id: userId,
         text_selection,
-        start_char,
-        end_char,
+        start_char: parseInt(start_char),
+        end_char: parseInt(end_char),
         explanation,
-        cultural_context
-      } = req.body;
-
-      const user_id = req.user.id;
-
-      console.log('📝 Creando anotación:', {
-        song_id,
-        user_id,
-        text_selection: text_selection.substring(0, 50) + '...'
+        cultural_context: cultural_context || null
       });
 
-      const [result] = await sequelize.query(
-        `INSERT INTO annotations 
-         (song_id, user_id, text_selection, start_char, end_char, explanation, cultural_context, status)
-         VALUES (:song_id, :user_id, :text_selection, :start_char, :end_char, :explanation, :cultural_context, 'active')`,
-        {
-          replacements: {
-            song_id,
-            user_id,
-            text_selection,
-            start_char,
-            end_char,
-            explanation,
-            cultural_context
-          }
-        }
-      );
+      // Incrementar contador de anotaciones en la canción
+      await songRepository.updateAnnotationCount(parseInt(song_id), 1);
 
-      // Incrementar contador de anotaciones de la canción
-      await sequelize.query(
-        'UPDATE songs SET annotation_count = annotation_count + 1 WHERE id = :song_id',
-        { replacements: { song_id } }
-      );
-
-      // 👇 QUERY CORREGIDA para obtener la anotación con is_verified
-      const [newAnnotation] = await sequelize.query(
-        `SELECT a.*, u.username, u.display_name 
-         FROM annotations a
-         LEFT JOIN users u ON a.user_id = u.id
-         WHERE a.id = :id`,
-        {
-          replacements: { id: result },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      console.log('✅ Anotación creada:', newAnnotation.id);
+      logger.info('Anotación creada exitosamente', {
+        annotation_id: annotation.id,
+        user: userId
+      });
 
       res.status(201).json({
+        success: true,
         message: 'Anotación creada exitosamente',
-        annotation: newAnnotation
+        annotation
       });
     } catch (error) {
-      console.error('❌ Error creando anotación:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      if (error.code === 'SONG_NOT_FOUND') {
+        throw new AppError('La canción no existe', 404);
+      }
+      throw error;
     }
-  }
+  });
 
-  // Votar anotación
-  async vote(req, res) {
+  /**
+   * PUT /api/annotations/:id
+   * Actualizar anotación
+   */
+  update = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { explanation, cultural_context } = req.body;
+    const userId = req.user?.id;
+
+    logger.info('Actualizando anotación', { annotation_id: id, user: userId });
+
+    const annotation = await annotationRepository.getById(id);
+    if (!annotation) {
+      throw new AppError('Anotación no encontrada', 404);
+    }
+
+    // Verificar permisos
+    if (annotation.user_id !== userId) {
+      logger.warn('Intento de actualizar anotación sin permisos', {
+        annotation_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para editar esta anotación', 403);
+    }
+
     try {
-      const { id } = req.params;
-      const { vote_type } = req.body; // 'up' or 'down'
-      const user_id = req.user.id;
-
-      if (!['up', 'down'].includes(vote_type)) {
-        return res.status(400).json({ message: 'Tipo de voto inválido' });
-      }
-
-      const [annotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
+      const updated = await annotationRepository.update(
+        id,
+        { explanation, cultural_context },
+        userId
       );
 
-      if (!annotation) {
-        return res.status(404).json({ message: 'Anotación no encontrada' });
-      }
-
-      // TODO: Verificar si ya votó (implementar tabla de votos)
-      // Por ahora simplemente incrementamos
-
-      const column = vote_type === 'up' ? 'upvotes' : 'downvotes';
-      await sequelize.query(
-        `UPDATE annotations SET ${column} = ${column} + 1 WHERE id = :id`,
-        { replacements: { id } }
-      );
-
-      const [updatedAnnotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      console.log(`👍 Voto ${vote_type} registrado en anotación:`, id);
+      logger.info('Anotación actualizada exitosamente', {
+        annotation_id: id,
+        user: userId
+      });
 
       res.json({
-        message: 'Voto registrado',
-        annotation: updatedAnnotation
-      });
-    } catch (error) {
-      console.error('❌ Error votando anotación:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  }
-
-  // Actualizar anotación
-  async update(req, res) {
-    try {
-      const { id } = req.params;
-      const { explanation, cultural_context } = req.body;
-      const user_id = req.user.id;
-
-      const [annotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      if (!annotation) {
-        return res.status(404).json({ message: 'Anotación no encontrada' });
-      }
-
-      if (annotation.user_id !== user_id) {
-        return res.status(403).json({ message: 'No tienes permiso para editar esta anotación' });
-      }
-
-      await sequelize.query(
-        'UPDATE annotations SET explanation = :explanation, cultural_context = :cultural_context WHERE id = :id',
-        {
-          replacements: { id, explanation, cultural_context }
-        }
-      );
-
-      const [updatedAnnotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      console.log('✅ Anotación actualizada:', id);
-
-      res.json({
+        success: true,
         message: 'Anotación actualizada exitosamente',
-        annotation: updatedAnnotation
+        annotation: updated
       });
     } catch (error) {
-      console.error('❌ Error actualizando anotación:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      if (error.code === 'FORBIDDEN') {
+        throw new AppError(error.message, 403);
+      }
+      throw error;
     }
-  }
+  });
 
-  // Eliminar anotación
-  async delete(req, res) {
+  /**
+   * DELETE /api/annotations/:id
+   * Eliminar anotación
+   */
+  delete = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    logger.info('Eliminando anotación', { annotation_id: id, user: userId });
+
+    const annotation = await annotationRepository.getById(id);
+    if (!annotation) {
+      throw new AppError('Anotación no encontrada', 404);
+    }
+
+    // Verificar permisos
+    if (annotation.user_id !== userId) {
+      logger.warn('Intento de eliminar anotación sin permisos', {
+        annotation_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para eliminar esta anotación', 403);
+    }
+
     try {
-      const { id } = req.params;
-      const user_id = req.user.id;
+      await annotationRepository.delete(id, userId);
 
-      const [annotation] = await sequelize.query(
-        'SELECT * FROM annotations WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+      // Decrementar contador de anotaciones en la canción
+      await songRepository.updateAnnotationCount(annotation.song_id, -1);
 
-      if (!annotation) {
-        return res.status(404).json({ message: 'Anotación no encontrada' });
-      }
-
-      if (annotation.user_id !== user_id) {
-        return res.status(403).json({ message: 'No tienes permiso para eliminar esta anotación' });
-      }
-
-      await sequelize.query(
-        'UPDATE annotations SET status = "deleted" WHERE id = :id',
-        { replacements: { id } }
-      );
-
-      // Decrementar contador
-      await sequelize.query(
-        'UPDATE songs SET annotation_count = annotation_count - 1 WHERE id = :song_id',
-        { replacements: { song_id: annotation.song_id } }
-      );
-
-      console.log('🗑️  Anotación eliminada:', id);
-
-      res.json({ message: 'Anotación eliminada exitosamente' });
-    } catch (error) {
-      console.error('❌ Error eliminando anotación:', error);
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      logger.info('Anotación eliminada exitosamente', {
+        annotation_id: id,
+        user: userId
       });
+
+      res.json({
+        success: true,
+        message: 'Anotación eliminada exitosamente'
+      });
+    } catch (error) {
+      if (error.code === 'FORBIDDEN') {
+        throw new AppError(error.message, 403);
+      }
+      throw error;
     }
-  }
+  });
+
+  /**
+   * POST /api/annotations/:id/vote
+   * Votar una anotación
+   */
+  vote = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { vote_type } = req.body;
+    const userId = req.user?.id;
+
+    if (!['up', 'down'].includes(vote_type)) {
+      throw new AppError('Tipo de voto inválido. Debe ser "up" o "down"', 400);
+    }
+
+    logger.info('Votando anotación', {
+      annotation_id: id,
+      vote_type,
+      user: userId
+    });
+
+    const annotation = await annotationRepository.getById(id);
+    if (!annotation) {
+      throw new AppError('Anotación no encontrada', 404);
+    }
+
+    try {
+      const updated = await annotationRepository.vote(id, vote_type, userId);
+
+      logger.info('Voto registrado', {
+        annotation_id: id,
+        vote_type,
+        user: userId
+      });
+
+      res.json({
+        success: true,
+        message: 'Voto registrado exitosamente',
+        annotation: updated
+      });
+    } catch (error) {
+      if (error.code === 'INVALID_VOTE') {
+        throw new AppError(error.message, 400);
+      }
+      throw error;
+    }
+  });
+
+  /**
+   * PATCH /api/annotations/:id/verify
+   * Verificar anotación (admin/moderator)
+   */
+  verify = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { verified } = req.body;
+
+    logger.info('Verificando anotación', {
+      annotation_id: id,
+      verified,
+      user: req.user?.id
+    });
+
+    const annotation = await annotationRepository.getById(id);
+    if (!annotation) {
+      throw new AppError('Anotación no encontrada', 404);
+    }
+
+    const updated = await annotationRepository.verify(id, verified);
+
+    logger.info('Anotación verificada/deverificada', {
+      annotation_id: id,
+      verified
+    });
+
+    res.json({
+      success: true,
+      message: `Anotación ${verified ? 'verificada' : 'deverificada'}`,
+      annotation: updated
+    });
+  });
+
+  /**
+   * POST /api/annotations/search/:query
+   * Buscar anotaciones
+   */
+  search = asyncHandler(async (req, res) => {
+    const { query } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    if (!query || query.trim().length < 2) {
+      throw new AppError('La búsqueda debe tener al menos 2 caracteres', 400);
+    }
+
+    logger.info('Buscando anotaciones', { query, page, limit });
+
+    const result = await annotationRepository.search(
+      query.trim(),
+      { page, limit }
+    );
+
+    res.json({
+      success: true,
+      annotations: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
 }
 
 module.exports = new AnnotationsController();

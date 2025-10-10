@@ -1,229 +1,304 @@
-// ✅ DESPUÉS - Solo Sequelize
-const { Album } = require('../models');
-const { AppError } = require('../middleware/errorHandler.middleware');
 const albumRepository = require('../repositories/album.repository');
+const { AppError, asyncHandler } = require('../middleware/errorHandler.middleware');
 const logger = require('../utils/logger');
 
-
 class AlbumsController {
-  async getAll(req, res, next) {
-    try {
-      const { page = 1, limit = 20, artist_id } = req.query;
-      const offset = (page - 1) * limit;
+  /**
+   * GET /api/albums
+   * Obtener todos los álbumes con paginación y filtros
+   */
+  getAll = asyncHandler(async (req, res) => {
+    const {
+      page = 1,
+      limit = 20,
+      search = null,
+      artist_id = null,
+      release_year = null,
+      sort = 'recent'
+    } = req.query;
 
-      const albums = await Album.findAndCountAll({
-        where: artist_id ? { artist_id } : {},
-        include: [
-          {
-            association: 'artist',
-            attributes: ['id', 'name', 'slug']
-          },
-          {
-            association: 'songs',
-            attributes: ['id'],
-            through: { attributes: [] }
-          }
-        ],
-        limit: parseInt(limit),
-        offset,
-        order: [['release_year', 'DESC'], ['created_at', 'DESC']]
-      });
+    logger.info('Obteniendo álbumes', {
+      user: req.user?.id,
+      filters: { search, artist_id, release_year, sort },
+      pagination: { page, limit }
+    });
 
-      res.json({
-        success: true,
-        albums: albums.rows,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: albums.count,
-          pages: Math.ceil(albums.count / limit)
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+    const filters = {
+      search: search ? search.trim() : null,
+      artist_id: artist_id ? parseInt(artist_id) : null,
+      release_year: release_year ? parseInt(release_year) : null,
+      sort
+    };
 
-  async getById(req, res, next) {
-    try {
-      const { id } = req.params;
+    const result = await albumRepository.getAll(filters, { page, limit });
 
-      const album = await Album.findByPk(id, {
-        include: [
-          {
-            association: 'artist',
-            attributes: ['id', 'name', 'slug']
-          },
-          {
-            association: 'songs',
-            attributes: ['id', 'title', 'track_number', 'annotation_count'],
-            through: { attributes: [] },
-            order: [['track_number', 'ASC']]
-          }
-        ]
-      });
-
-      if (!album) {
-        throw new AppError('Álbum no encontrado', 404);
+    res.json({
+      success: true,
+      albums: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
       }
+    });
+  });
 
-      res.json({
-        success: true,
-        album
-      });
-    } catch (error) {
-      next(error);
+  /**
+   * GET /api/albums/:id
+   * Obtener álbum por ID
+   */
+  getById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    logger.info('Obteniendo álbum por ID', { album_id: id, user: req.user?.id });
+
+    const album = await albumRepository.getById(id);
+    if (!album) {
+      throw new AppError('Álbum no encontrado', 404);
     }
-  }
 
-  async getAll(req, res, next) {
-  try {
-    const result = await albumRepository.getAll(
-      { artist_id: req.query.artist_id },
-      { page: req.query.page, limit: req.query.limit }
+    res.json({
+      success: true,
+      album
+    });
+  });
+
+  /**
+   * GET /api/albums/artist/:artist_id
+   * Obtener álbumes de un artista
+   */
+  getByArtist = asyncHandler(async (req, res) => {
+    const { artist_id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    logger.info('Obteniendo álbumes del artista', {
+      artist_id,
+      pagination: { page, limit }
+    });
+
+    const result = await albumRepository.getByArtist(
+      parseInt(artist_id),
+      { page, limit }
     );
 
     res.json({
       success: true,
       albums: result.rows,
-      pagination: { /* ... */ }
-    });
-  } catch (error) {
-    next(error);
-  }
-}
-
-  async create(req, res, next) {
-    try {
-      const { title, artist_id, release_year, description } = req.body;
-      const created_by = req.user?.id;
-
-      // Validar que el artista exista
-      const artist = await Artist.findByPk(artist_id);
-      if (!artist) {
-        throw new AppError('Artista no encontrado', 404);
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
       }
+    });
+  });
 
-      // Generar slug
-      const slug = title.toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/[\s_-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+  /**
+   * GET /api/albums/:id/songs
+   * Obtener canciones de un álbum
+   */
+  getSongs = asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-      const album = await Album.create({
+    logger.info('Obteniendo canciones del álbum', { album_id: id });
+
+    const album = await albumRepository.getSongs(id);
+    if (!album) {
+      throw new AppError('Álbum no encontrado', 404);
+    }
+
+    res.json({
+      success: true,
+      songs: album.songs
+    });
+  });
+
+  /**
+   * GET /api/albums/:id/stats
+   * Obtener estadísticas del álbum
+   */
+  getStats = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    logger.info('Obteniendo estadísticas del álbum', { album_id: id });
+
+    const stats = await albumRepository.getStats(id);
+    if (!stats) {
+      throw new AppError('Álbum no encontrado', 404);
+    }
+
+    res.json({
+      success: true,
+      stats
+    });
+  });
+
+  /**
+   * POST /api/albums
+   * Crear nuevo álbum (solo autenticados)
+   */
+  create = asyncHandler(async (req, res) => {
+    const {
+      title,
+      artist_id,
+      release_year,
+      description,
+      cover_image_url
+    } = req.body;
+
+    const userId = req.user?.id;
+
+    // Validación básica
+    if (!title || !title.trim()) {
+      throw new AppError('El título del álbum es requerido', 400);
+    }
+
+    if (title.trim().length > 255) {
+      throw new AppError('El título no puede exceder 255 caracteres', 400);
+    }
+
+    if (!artist_id) {
+      throw new AppError('El artista es requerido', 400);
+    }
+
+    logger.info('Creando nuevo álbum', {
+      user: userId,
+      title,
+      artist_id
+    });
+
+    try {
+      const album = await albumRepository.create({
         title,
-        artist_id,
-        slug,
-        release_year,
-        description,
-        created_by
+        artist_id: parseInt(artist_id),
+        release_year: release_year ? parseInt(release_year) : null,
+        description: description || null,
+        cover_image_url: cover_image_url || null,
+        created_by: userId
       });
 
-      const albumWithRelations = await Album.findByPk(album.id, {
-        include: [{ association: 'artist', attributes: ['name'] }]
+      logger.info('Álbum creado exitosamente', {
+        album_id: album.id,
+        user: userId
       });
 
       res.status(201).json({
         success: true,
         message: 'Álbum creado exitosamente',
-        album: albumWithRelations
+        album
       });
     } catch (error) {
-      next(error);
+      if (error.code === 'ARTIST_NOT_FOUND') {
+        throw new AppError('El artista no existe', 404);
+      }
+      throw error;
     }
-  }
+  });
 
-  async update(req, res, next) {
+  /**
+   * PUT /api/albums/:id
+   * Actualizar álbum (solo creador o admin)
+   */
+  update = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const {
+      title,
+      release_year,
+      description,
+      cover_image_url
+    } = req.body;
+
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    logger.info('Actualizando álbum', { album_id: id, user: userId });
+
+    const album = await albumRepository.getById(id);
+    if (!album) {
+      throw new AppError('Álbum no encontrado', 404);
+    }
+
+    // Verificar permisos
+    if (album.created_by !== userId && userRole !== 'admin') {
+      logger.warn('Intento de actualizar álbum sin permisos', {
+        album_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para editar este álbum', 403);
+    }
+
+    const updateData = {};
+    if (title) updateData.title = title.trim();
+    if (release_year !== undefined) updateData.release_year = release_year ? parseInt(release_year) : null;
+    if (description !== undefined) updateData.description = description;
+    if (cover_image_url !== undefined) updateData.cover_image_url = cover_image_url;
+
     try {
-      const { id } = req.params;
-      const { title, release_year, description, cover_image_url } = req.body;
+      const updated = await albumRepository.update(id, updateData, { id: userId, role: userRole });
 
-      const album = await Album.findByPk(id);
-      if (!album) {
-        throw new AppError('Álbum no encontrado', 404);
-      }
-
-      // Validar permisos (solo creador o admin)
-      if (album.created_by !== req.user.id && req.user.role !== 'admin') {
-        throw new AppError('No tienes permiso para editar este álbum', 403);
-      }
-
-      await album.update({
-        title,
-        release_year,
-        description,
-        cover_image_url
+      logger.info('Álbum actualizado exitosamente', {
+        album_id: id,
+        user: userId
       });
 
       res.json({
         success: true,
         message: 'Álbum actualizado exitosamente',
-        album
+        album: updated
       });
     } catch (error) {
-      next(error);
+      if (error.code === 'FORBIDDEN') {
+        throw new AppError(error.message, 403);
+      }
+      throw error;
     }
-  }
+  });
 
-  async delete(req, res, next) {
+  /**
+   * DELETE /api/albums/:id
+   * Eliminar álbum (solo creador o admin)
+   */
+  delete = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    logger.info('Eliminando álbum', { album_id: id, user: userId });
+
+    const album = await albumRepository.getById(id);
+    if (!album) {
+      throw new AppError('Álbum no encontrado', 404);
+    }
+
+    // Verificar permisos
+    if (album.created_by !== userId && userRole !== 'admin') {
+      logger.warn('Intento de eliminar álbum sin permisos', {
+        album_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para eliminar este álbum', 403);
+    }
+
     try {
-      const { id } = req.params;
+      await albumRepository.delete(id, { id: userId, role: userRole });
 
-      const album = await Album.findByPk(id);
-      if (!album) {
-        throw new AppError('Álbum no encontrado', 404);
-      }
-
-      // Validar permisos
-      if (album.created_by !== req.user.id && req.user.role !== 'admin') {
-        throw new AppError('No tienes permiso para eliminar este álbum', 403);
-      }
-
-      // Actualizar canciones para que sean singles
-      await Song.update(
-        { album_id: null, is_single: true },
-        { where: { album_id: id } }
-      );
-
-      await album.destroy();
+      logger.info('Álbum eliminado exitosamente', {
+        album_id: id,
+        user: userId
+      });
 
       res.json({
         success: true,
         message: 'Álbum eliminado exitosamente'
       });
     } catch (error) {
-      next(error);
-    }
-  }
-
-  async getSongs(req, res, next) {
-    try {
-      const { id } = req.params;
-
-      const album = await Album.findByPk(id, {
-        include: [
-          {
-            association: 'songs',
-            attributes: ['id', 'title', 'track_number', 'artist_id', 'annotation_count'],
-            order: [['track_number', 'ASC']]
-          }
-        ]
-      });
-
-      if (!album) {
-        throw new AppError('Álbum no encontrado', 404);
+      if (error.code === 'FORBIDDEN') {
+        throw new AppError(error.message, 403);
       }
-
-      res.json({
-        success: true,
-        songs: album.songs
-      });
-    } catch (error) {
-      next(error);
+      throw error;
     }
-  }
+  });
 }
-
-
 
 module.exports = new AlbumsController();
