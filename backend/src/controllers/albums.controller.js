@@ -1,124 +1,108 @@
-const sequelize = require('../config/database');
+// ✅ DESPUÉS - Solo Sequelize
+const { Album } = require('../models');
+const { AppError } = require('../middleware/errorHandler.middleware');
+const albumRepository = require('../repositories/album.repository');
+const logger = require('../utils/logger');
+
 
 class AlbumsController {
-  // Obtener todos los álbumes
-  async getAll(req, res) {
+  async getAll(req, res, next) {
     try {
       const { page = 1, limit = 20, artist_id } = req.query;
       const offset = (page - 1) * limit;
 
-      let whereClause = '';
-      let replacements = { limit: parseInt(limit), offset };
-
-      if (artist_id) {
-        whereClause = 'WHERE al.artist_id = :artist_id';
-        replacements.artist_id = artist_id;
-      }
-
-      const [albums, total] = await Promise.all([
-        sequelize.query(
-          `SELECT al.*, 
-                  ar.name as artist_name,
-                  COUNT(DISTINCT s.id) as song_count
-           FROM albums al
-           LEFT JOIN artists ar ON al.artist_id = ar.id
-           LEFT JOIN songs s ON al.id = s.album_id AND s.is_single = false
-           ${whereClause}
-           GROUP BY al.id
-           ORDER BY al.release_year DESC, al.created_at DESC
-           LIMIT :limit OFFSET :offset`,
+      const albums = await Album.findAndCountAll({
+        where: artist_id ? { artist_id } : {},
+        include: [
           {
-            replacements,
-            type: sequelize.QueryTypes.SELECT
-          }
-        ),
-        sequelize.query(
-          `SELECT COUNT(*) as total FROM albums al ${whereClause}`,
+            association: 'artist',
+            attributes: ['id', 'name', 'slug']
+          },
           {
-            replacements,
-            type: sequelize.QueryTypes.SELECT
+            association: 'songs',
+            attributes: ['id'],
+            through: { attributes: [] }
           }
-        )
-      ]);
+        ],
+        limit: parseInt(limit),
+        offset,
+        order: [['release_year', 'DESC'], ['created_at', 'DESC']]
+      });
 
       res.json({
-        albums,
+        success: true,
+        albums: albums.rows,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: total[0].total,
-          pages: Math.ceil(total[0].total / limit)
+          total: albums.count,
+          pages: Math.ceil(albums.count / limit)
         }
       });
     } catch (error) {
-      console.error('❌ Error obteniendo álbumes:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      next(error);
     }
   }
 
-  // Obtener álbum por ID
-  async getById(req, res) {
+  async getById(req, res, next) {
     try {
       const { id } = req.params;
 
-      const [album] = await sequelize.query(
-        `SELECT al.*, 
-                ar.name as artist_name,
-                ar.slug as artist_slug,
-                COUNT(DISTINCT s.id) as song_count
-         FROM albums al
-         LEFT JOIN artists ar ON al.artist_id = ar.id
-         LEFT JOIN songs s ON al.id = s.album_id
-         WHERE al.id = :id
-         GROUP BY al.id`,
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+      const album = await Album.findByPk(id, {
+        include: [
+          {
+            association: 'artist',
+            attributes: ['id', 'name', 'slug']
+          },
+          {
+            association: 'songs',
+            attributes: ['id', 'title', 'track_number', 'annotation_count'],
+            through: { attributes: [] },
+            order: [['track_number', 'ASC']]
+          }
+        ]
+      });
 
       if (!album) {
-        return res.status(404).json({ message: 'Álbum no encontrado' });
+        throw new AppError('Álbum no encontrado', 404);
       }
 
-      res.json({ album });
+      res.json({
+        success: true,
+        album
+      });
     } catch (error) {
-      console.error('❌ Error obteniendo álbum:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      next(error);
     }
   }
 
-  // Obtener álbumes por artista
-  async getByArtist(req, res) {
-    try {
-      const { artist_id } = req.params;
+  async getAll(req, res, next) {
+  try {
+    const result = await albumRepository.getAll(
+      { artist_id: req.query.artist_id },
+      { page: req.query.page, limit: req.query.limit }
+    );
 
-      const albums = await sequelize.query(
-        `SELECT al.*, 
-                COUNT(DISTINCT s.id) as song_count
-         FROM albums al
-         LEFT JOIN songs s ON al.id = s.album_id
-         WHERE al.artist_id = :artist_id
-         GROUP BY al.id
-         ORDER BY al.release_year DESC`,
-        {
-          replacements: { artist_id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      res.json({ albums });
-    } catch (error) {
-      console.error('❌ Error obteniendo álbumes del artista:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
-    }
+    res.json({
+      success: true,
+      albums: result.rows,
+      pagination: { /* ... */ }
+    });
+  } catch (error) {
+    next(error);
   }
+}
 
-  // Crear nuevo álbum
-  async create(req, res) {
+  async create(req, res, next) {
     try {
       const { title, artist_id, release_year, description } = req.body;
-      const created_by = req.user ? req.user.id : null;
+      const created_by = req.user?.id;
+
+      // Validar que el artista exista
+      const artist = await Artist.findByPk(artist_id);
+      if (!artist) {
+        throw new AppError('Artista no encontrado', 404);
+      }
 
       // Generar slug
       const slug = title.toLowerCase()
@@ -126,142 +110,120 @@ class AlbumsController {
         .replace(/[\s_-]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-      const [result] = await sequelize.query(
-        `INSERT INTO albums (title, artist_id, slug, release_year, description, created_by)
-         VALUES (:title, :artist_id, :slug, :release_year, :description, :created_by)`,
-        {
-          replacements: { title, artist_id, slug, release_year, description, created_by }
-        }
-      );
+      const album = await Album.create({
+        title,
+        artist_id,
+        slug,
+        release_year,
+        description,
+        created_by
+      });
 
-      const [newAlbum] = await sequelize.query(
-        'SELECT * FROM albums WHERE id = :id',
-        {
-          replacements: { id: result },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      console.log('✅ Álbum creado:', newAlbum.title);
+      const albumWithRelations = await Album.findByPk(album.id, {
+        include: [{ association: 'artist', attributes: ['name'] }]
+      });
 
       res.status(201).json({
+        success: true,
         message: 'Álbum creado exitosamente',
-        album: newAlbum
+        album: albumWithRelations
       });
     } catch (error) {
-      console.error('❌ Error creando álbum:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      next(error);
     }
   }
 
-  // Actualizar álbum
-  async update(req, res) {
+  async update(req, res, next) {
     try {
       const { id } = req.params;
       const { title, release_year, description, cover_image_url } = req.body;
 
-      const [album] = await sequelize.query(
-        'SELECT * FROM albums WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
+      const album = await Album.findByPk(id);
       if (!album) {
-        return res.status(404).json({ message: 'Álbum no encontrado' });
+        throw new AppError('Álbum no encontrado', 404);
       }
 
-      await sequelize.query(
-        `UPDATE albums 
-         SET title = :title, 
-             release_year = :release_year, 
-             description = :description,
-             cover_image_url = :cover_image_url
-         WHERE id = :id`,
-        {
-          replacements: { id, title, release_year, description, cover_image_url }
-        }
-      );
+      // Validar permisos (solo creador o admin)
+      if (album.created_by !== req.user.id && req.user.role !== 'admin') {
+        throw new AppError('No tienes permiso para editar este álbum', 403);
+      }
 
-      const [updatedAlbum] = await sequelize.query(
-        'SELECT * FROM albums WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+      await album.update({
+        title,
+        release_year,
+        description,
+        cover_image_url
+      });
 
       res.json({
+        success: true,
         message: 'Álbum actualizado exitosamente',
-        album: updatedAlbum
+        album
       });
     } catch (error) {
-      console.error('❌ Error actualizando álbum:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      next(error);
     }
   }
 
-  // Eliminar álbum
-  async delete(req, res) {
+  async delete(req, res, next) {
     try {
       const { id } = req.params;
 
-      const [album] = await sequelize.query(
-        'SELECT * FROM albums WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
+      const album = await Album.findByPk(id);
       if (!album) {
-        return res.status(404).json({ message: 'Álbum no encontrado' });
+        throw new AppError('Álbum no encontrado', 404);
+      }
+
+      // Validar permisos
+      if (album.created_by !== req.user.id && req.user.role !== 'admin') {
+        throw new AppError('No tienes permiso para eliminar este álbum', 403);
       }
 
       // Actualizar canciones para que sean singles
-      await sequelize.query(
-        'UPDATE songs SET album_id = NULL, is_single = true WHERE album_id = :id',
-        { replacements: { id } }
+      await Song.update(
+        { album_id: null, is_single: true },
+        { where: { album_id: id } }
       );
 
-      // Eliminar álbum
-      await sequelize.query(
-        'DELETE FROM albums WHERE id = :id',
-        { replacements: { id } }
-      );
+      await album.destroy();
 
-      res.json({ message: 'Álbum eliminado exitosamente' });
+      res.json({
+        success: true,
+        message: 'Álbum eliminado exitosamente'
+      });
     } catch (error) {
-      console.error('❌ Error eliminando álbum:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      next(error);
     }
   }
 
-  // Obtener canciones del álbum
-  async getSongs(req, res) {
+  async getSongs(req, res, next) {
     try {
       const { id } = req.params;
 
-      const songs = await sequelize.query(
-        `SELECT s.*, 
-                ar.name as artist_name
-         FROM songs s
-         LEFT JOIN artists ar ON s.artist_id = ar.id
-         WHERE s.album_id = :id
-         ORDER BY s.track_number ASC, s.created_at ASC`,
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+      const album = await Album.findByPk(id, {
+        include: [
+          {
+            association: 'songs',
+            attributes: ['id', 'title', 'track_number', 'artist_id', 'annotation_count'],
+            order: [['track_number', 'ASC']]
+          }
+        ]
+      });
 
-      res.json({ songs });
+      if (!album) {
+        throw new AppError('Álbum no encontrado', 404);
+      }
+
+      res.json({
+        success: true,
+        songs: album.songs
+      });
     } catch (error) {
-      console.error('❌ Error obteniendo canciones del álbum:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      next(error);
     }
   }
 }
+
+
 
 module.exports = new AlbumsController();

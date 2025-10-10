@@ -1,245 +1,347 @@
-const sequelize = require('../config/database');
+const artistRepository = require('../repositories/artist.repository');
+const { AppError, asyncHandler } = require('../middleware/errorHandler.middleware');
+const logger = require('../utils/logger');
 
 class ArtistsController {
-  async getAll(req, res) {
-    try {
-      const { page = 1, limit = 100 } = req.query;
-      const offset = (page - 1) * limit;
+  /**
+   * GET /api/artists
+   * Obtener todos los artistas con paginación y filtros
+   */
+  getAll = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 100, search, country_code, verified } = req.query;
 
-      const [artists, total] = await Promise.all([
-        sequelize.query(
-          'SELECT * FROM artists ORDER BY name ASC LIMIT :limit OFFSET :offset',
-          {
-            replacements: { limit: parseInt(limit), offset },
-            type: sequelize.QueryTypes.SELECT
-          }
-        ),
-        sequelize.query(
-          'SELECT COUNT(*) as total FROM artists',
-          { type: sequelize.QueryTypes.SELECT }
-        )
-      ]);
+    logger.info('Obteniendo artistas', {
+      user: req.user?.id,
+      filters: { search, country_code, verified },
+      pagination: { page, limit }
+    });
+
+    const filters = {};
+    if (search) filters.search = search;
+    if (country_code) filters.country_code = country_code;
+    if (verified !== undefined) filters.verified = verified === 'true';
+
+    const result = await artistRepository.getAll(filters, { page, limit });
+
+    res.json({
+      success: true,
+      artists: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
+
+  /**
+   * GET /api/artists/:id
+   * Obtener artista por ID
+   */
+  getById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    logger.info('Obteniendo artista por ID', { artist_id: id, user: req.user?.id });
+
+    const artist = await artistRepository.getById(id, true);
+
+    if (!artist) {
+      throw new AppError('Artista no encontrado', 404);
+    }
+
+    res.json({
+      success: true,
+      artist
+    });
+  });
+
+  /**
+   * GET /api/artists/:id/stats
+   * Obtener estadísticas de un artista
+   */
+  getStats = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    logger.info('Obteniendo estadísticas de artista', { artist_id: id });
+
+    const stats = await artistRepository.getStats(id);
+
+    if (!stats) {
+      throw new AppError('Artista no encontrado', 404);
+    }
+
+    res.json({
+      success: true,
+      stats
+    });
+  });
+
+  /**
+   * GET /api/artists/:id/songs
+   * Obtener canciones de un artista
+   */
+  getSongs = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    logger.info('Obteniendo canciones de artista', {
+      artist_id: id,
+      pagination: { page, limit }
+    });
+
+    const result = await artistRepository.getSongs(id, { page, limit });
+
+    if (!result.rows.length && parseInt(page) === 1) {
+      // Verificar que el artista existe
+      const artist = await artistRepository.getById(id);
+      if (!artist) {
+        throw new AppError('Artista no encontrado', 404);
+      }
+    }
+
+    res.json({
+      success: true,
+      songs: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
+
+  /**
+   * GET /api/artists/:id/albums
+   * Obtener álbumes de un artista
+   */
+  getAlbums = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    logger.info('Obteniendo álbumes de artista', { artist_id: id });
+
+    const artist = await artistRepository.getById(id);
+    if (!artist) {
+      throw new AppError('Artista no encontrado', 404);
+    }
+
+    const albums = await artistRepository.getAlbums(id);
+
+    res.json({
+      success: true,
+      albums
+    });
+  });
+
+  /**
+   * POST /api/artists
+   * Crear nuevo artista (solo autenticados)
+   */
+  create = asyncHandler(async (req, res) => {
+    const { name, country_code, bio } = req.body;
+    const userId = req.user?.id;
+
+    // Validación básica
+    if (!name || !name.trim()) {
+      throw new AppError('El nombre del artista es requerido', 400);
+    }
+
+    if (name.trim().length > 255) {
+      throw new AppError('El nombre no puede exceder 255 caracteres', 400);
+    }
+
+    logger.info('Creando nuevo artista', {
+      user: userId,
+      artist_name: name
+    });
+
+    // Generar slug
+    const slug = artistRepository.generateSlug(name);
+
+    // Verificar duplicados
+    const existing = await artistRepository.exists(name, slug);
+    if (existing) {
+      logger.warn('Intento de crear artista duplicado', {
+        name,
+        slug,
+        user: userId
+      });
+      throw new AppError('Ya existe un artista con ese nombre', 409, { field: 'name' });
+    }
+
+    // Crear artista
+    const artist = await artistRepository.create({
+      name: name.trim(),
+      slug,
+      country_code: country_code || null,
+      bio: bio ? bio.trim() : null,
+      user_id: userId
+    });
+
+    logger.info('Artista creado exitosamente', {
+      artist_id: artist.id,
+      user: userId
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Artista creado exitosamente',
+      artist
+    });
+  });
+
+  /**
+   * PUT /api/artists/:id
+   * Actualizar artista (solo creador o admin)
+   */
+  update = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, country_code, bio } = req.body;
+    const userId = req.user?.id;
+
+    logger.info('Actualizando artista', { artist_id: id, user: userId });
+
+    const artist = await artistRepository.getById(id);
+    if (!artist) {
+      throw new AppError('Artista no encontrado', 404);
+    }
+
+    // Verificar permisos (solo creador o admin)
+    if (artist.user_id !== userId && req.user.role !== 'admin') {
+      logger.warn('Intento de actualizar artista sin permisos', {
+        artist_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para editar este artista', 403);
+    }
+
+    // Preparar datos a actualizar
+    const updateData = {};
+    if (name) {
+      const slug = artistRepository.generateSlug(name);
+      const existing = await artistRepository.exists(name, slug);
+      if (existing && existing.id !== parseInt(id)) {
+        throw new AppError('Ya existe un artista con ese nombre', 409);
+      }
+      updateData.name = name.trim();
+      updateData.slug = slug;
+    }
+    if (country_code !== undefined) updateData.country_code = country_code;
+    if (bio !== undefined) updateData.bio = bio ? bio.trim() : null;
+
+    const updated = await artistRepository.update(id, updateData);
+
+    logger.info('Artista actualizado exitosamente', {
+      artist_id: id,
+      user: userId
+    });
+
+    res.json({
+      success: true,
+      message: 'Artista actualizado exitosamente',
+      artist: updated
+    });
+  });
+
+  /**
+   * DELETE /api/artists/:id
+   * Eliminar artista (solo creador o admin)
+   */
+  delete = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    logger.info('Eliminando artista', { artist_id: id, user: userId });
+
+    const artist = await artistRepository.getById(id);
+    if (!artist) {
+      throw new AppError('Artista no encontrado', 404);
+    }
+
+    // Verificar permisos
+    if (artist.user_id !== userId && req.user.role !== 'admin') {
+      logger.warn('Intento de eliminar artista sin permisos', {
+        artist_id: id,
+        user: userId
+      });
+      throw new AppError('No tienes permiso para eliminar este artista', 403);
+    }
+
+    try {
+      await artistRepository.delete(id);
+      logger.info('Artista eliminado exitosamente', {
+        artist_id: id,
+        user: userId
+      });
 
       res.json({
-        artists,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: total[0].total
-        }
+        success: true,
+        message: 'Artista eliminado exitosamente'
       });
     } catch (error) {
-      console.error('❌ Error obteniendo artistas:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+      if (error.code === 'ARTIST_HAS_SONGS') {
+        throw new AppError(
+          'No se puede eliminar el artista porque tiene canciones asociadas',
+          400,
+          { songs_count: error.songsCount }
+        );
+      }
+      throw error;
     }
-  }
+  });
 
-  async create(req, res) {
-    try {
-      // 1. Obtener el ID del usuario del token
-      const userId = req.user ? req.user.id : null;
-      
-      // 2. Desestructuración de los datos
-      const { name, country_code, bio } = req.body;
+  /**
+   * GET /api/artists/similar/:id
+   * Obtener artistas similares
+   */
+  getSimilar = asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-      // 3. Validación básica
-      if (!name || !name.trim()) {
-        return res.status(400).json({ message: 'El nombre del artista es requerido' });
-      }
+    logger.info('Obteniendo artistas similares', { artist_id: id });
 
-      // 4. Generación del slug
-      const slug = name.toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
-        .replace(/[^\w\s-]/g, '') // Eliminar caracteres especiales
-        .replace(/[\s_-]+/g, '-') // Reemplazar espacios con guiones
-        .replace(/^-+|-+$/g, ''); // Eliminar guiones al inicio/final
-
-      // 5. Verificar si el slug ya existe
-      const [existingArtist] = await sequelize.query(
-        'SELECT * FROM artists WHERE slug = :slug',
-        {
-          replacements: { slug },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      // Si existe, agregar número al slug
-      let finalSlug = slug;
-      if (existingArtist) {
-        const timestamp = Date.now();
-        finalSlug = `${slug}-${timestamp}`;
-      }
-
-      console.log('📝 Creando artista:', { name, slug: finalSlug, country_code });
-
-      // 6. Inserción SQL con todos los campos
-      const [result] = await sequelize.query(
-        `INSERT INTO artists (name, slug, country_code, bio, user_id) 
-         VALUES (:name, :slug, :country_code, :bio, :user_id)`,
-        {
-          replacements: { 
-            name: name.trim(), 
-            slug: finalSlug, 
-            country_code: country_code || null, 
-            bio: bio || null, 
-            user_id: userId 
-          }
-        }
-      );
-
-      // 7. Obtener el artista creado
-      const [newArtist] = await sequelize.query(
-        'SELECT * FROM artists WHERE id = :id',
-        {
-          replacements: { id: result },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      console.log('✅ Artista creado exitosamente:', newArtist.name);
-
-      res.status(201).json({ 
-        message: 'Artista creado exitosamente', 
-        artist: newArtist
-      });
-
-    } catch (error) {
-      console.error('❌ Error creando artista:', error);
-      console.error('Stack:', error.stack);
-      
-      // Manejo específico de errores de MySQL
-      if (error.original && error.original.code === 'ER_DUP_ENTRY') {
-        return res.status(400).json({ 
-          message: 'Ya existe un artista con ese nombre' 
-        });
-      }
-      
-      res.status(500).json({ 
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+    const artist = await artistRepository.getById(id);
+    if (!artist) {
+      throw new AppError('Artista no encontrado', 404);
     }
-  }
 
-  async getById(req, res) {
-    try {
-      const { id } = req.params;
+    const similar = await artistRepository.getSimilar(id, 5);
 
-      const [artist] = await sequelize.query(
-        'SELECT * FROM artists WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
+    res.json({
+      success: true,
+      similar
+    });
+  });
 
-      if (!artist) {
-        return res.status(404).json({ message: 'Artista no encontrado' });
-      }
+  /**
+   * PATCH /api/artists/:id/verify
+   * Verificar artista (solo admin)
+   */
+  verify = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { verified } = req.body;
 
-      res.json({ artist });
-    } catch (error) {
-      console.error('❌ Error obteniendo artista:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    if (req.user.role !== 'admin') {
+      throw new AppError('Solo administradores pueden verificar artistas', 403);
     }
-  }
 
-  async update(req, res) {
-    try {
-      const { id } = req.params;
-      const { name, country_code, bio } = req.body;
+    logger.info('Verificando artista', {
+      artist_id: id,
+      verified,
+      admin: req.user.id
+    });
 
-      const [artist] = await sequelize.query(
-        'SELECT * FROM artists WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      if (!artist) {
-        return res.status(404).json({ message: 'Artista no encontrado' });
-      }
-
-      // Regenerar slug si cambia el nombre
-      let slug = artist.slug;
-      if (name && name !== artist.name) {
-        slug = name.toLowerCase()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^\w\s-]/g, '')
-          .replace(/[\s_-]+/g, '-')
-          .replace(/^-+|-+$/g, '');
-      }
-
-      await sequelize.query(
-        `UPDATE artists 
-         SET name = :name, slug = :slug, country_code = :country_code, bio = :bio
-         WHERE id = :id`,
-        {
-          replacements: { id, name, slug, country_code, bio }
-        }
-      );
-
-      const [updatedArtist] = await sequelize.query(
-        'SELECT * FROM artists WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      res.json({
-        message: 'Artista actualizado exitosamente',
-        artist: updatedArtist
-      });
-    } catch (error) {
-      console.error('❌ Error actualizando artista:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    const artist = await artistRepository.verify(id, verified);
+    if (!artist) {
+      throw new AppError('Artista no encontrado', 404);
     }
-  }
 
-  async delete(req, res) {
-    try {
-      const { id } = req.params;
-
-      const [artist] = await sequelize.query(
-        'SELECT * FROM artists WHERE id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      if (!artist) {
-        return res.status(404).json({ message: 'Artista no encontrado' });
-      }
-
-      // Verificar si tiene canciones asociadas
-      const [songs] = await sequelize.query(
-        'SELECT COUNT(*) as count FROM songs WHERE artist_id = :id',
-        {
-          replacements: { id },
-          type: sequelize.QueryTypes.SELECT
-        }
-      );
-
-      if (songs.count > 0) {
-        return res.status(400).json({ 
-          message: 'No se puede eliminar el artista porque tiene canciones asociadas' 
-        });
-      }
-
-      await sequelize.query(
-        'DELETE FROM artists WHERE id = :id',
-        { replacements: { id } }
-      );
-
-      res.json({ message: 'Artista eliminado exitosamente' });
-    } catch (error) {
-      console.error('❌ Error eliminando artista:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
-    }
-  }
+    res.json({
+      success: true,
+      message: `Artista ${verified ? 'verificado' : 'deverificado'}`,
+      artist
+    });
+  });
 }
 
 module.exports = new ArtistsController();
