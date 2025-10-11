@@ -1,110 +1,128 @@
-const User = require('../models/User.model.js');
-const { validationResult } = require('express-validator');
+const userRepository = require('../repositories/user.repository');
+const { AppError, asyncHandler } = require('../middleware/errorHandler.middleware');
+const logger = require('../utils/logger');
 
 class UsersController {
-  // Obtener perfil del usuario actual
-  async getProfile(req, res) {
-    try {
-      const user = await User.findByPk(req.user.id, {
-        attributes: { exclude: ['password_hash'] }
-      });
+  /**
+   * GET /api/users/profile
+   * Obtener perfil del usuario actual
+   */
+  getProfile = asyncHandler(async (req, res) => {
+    const userId = req.user?.id;
 
-      if (!user) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
+    logger.info('Obteniendo perfil de usuario', { user: userId });
 
-      res.json({ user });
-    } catch (error) {
-      console.error('Error obteniendo perfil:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    const user = await userRepository.getById(userId);
+    if (!user) {
+      throw new AppError('Usuario no encontrado', 404);
     }
-  }
 
-  // Obtener usuario por username
-  async getUserByUsername(req, res) {
-    try {
-      const { username } = req.params;
+    res.json({
+      success: true,
+      user
+    });
+  });
 
-      const user = await User.findOne({
-        where: { username },
-        attributes: { exclude: ['password_hash', 'email'] }
-      });
+  /**
+   * PUT /api/users/profile
+   * Actualizar perfil del usuario actual
+   */
+  updateProfile = asyncHandler(async (req, res) => {
+    const userId = req.user?.id;
+    const { display_name, country_code, region } = req.body;
 
-      if (!user) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
+    logger.info('Actualizando perfil de usuario', { user: userId });
 
-      res.json({ user });
-    } catch (error) {
-      console.error('Error obteniendo usuario:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    const user = await userRepository.getById(userId);
+    if (!user) {
+      throw new AppError('Usuario no encontrado', 404);
     }
-  }
 
-  // Actualizar perfil
-  async updateProfile(req, res) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+    const updated = await userRepository.update(userId, {
+      display_name,
+      country_code,
+      region
+    });
 
-      const { display_name, country_code, region } = req.body;
+    logger.info('Perfil actualizado exitosamente', { user: userId });
 
-      const user = await User.findByPk(req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
+    res.json({
+      success: true,
+      message: 'Perfil actualizado exitosamente',
+      user: updated
+    });
+  });
 
-      await user.update({
-        display_name,
-        country_code,
-        region
-      });
+  /**
+   * GET /api/users/:username
+   * Obtener usuario público por username
+   */
+  getUserByUsername = asyncHandler(async (req, res) => {
+    const { username } = req.params;
 
-      const updatedUser = user.toJSON();
-      delete updatedUser.password_hash;
+    logger.info('Obteniendo usuario público', { username });
 
-      res.json({
-        message: 'Perfil actualizado exitosamente',
-        user: updatedUser
-      });
-    } catch (error) {
-      console.error('Error actualizando perfil:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    const user = await userRepository.getByUsername(username);
+    if (!user) {
+      throw new AppError('Usuario no encontrado', 404);
     }
-  }
 
-  // Obtener estadísticas del usuario
-  async getUserStats(req, res) {
-    try {
-      const { username } = req.params;
+    res.json({
+      success: true,
+      user
+    });
+  });
 
-      const user = await User.findOne({
-        where: { username },
-        attributes: ['id', 'username', 'display_name', 'reputation_score', 'created_at']
-      });
+  /**
+   * GET /api/users/:username/stats
+   * Obtener estadísticas de usuario
+   */
+  getUserStats = asyncHandler(async (req, res) => {
+    const { username } = req.params;
 
-      if (!user) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
+    logger.info('Obteniendo estadísticas de usuario', { username });
 
-      // TODO: Agregar conteos reales cuando tengamos las relaciones
-      const stats = {
-        annotations_count: 0,
-        songs_added: 0,
-        upvotes_received: 0
-      };
-
-      res.json({
-        user,
-        stats
-      });
-    } catch (error) {
-      console.error('Error obteniendo estadísticas:', error);
-      res.status(500).json({ message: 'Error interno del servidor' });
+    const user = await userRepository.getByUsername(username);
+    if (!user) {
+      throw new AppError('Usuario no encontrado', 404);
     }
-  }
+
+    const stats = await userRepository.getStats(user.id);
+
+    res.json({
+      success: true,
+      stats
+    });
+  });
+
+  /**
+   * GET /api/users/:username/annotations
+   * Obtener anotaciones de un usuario
+   */
+  getUserAnnotations = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    logger.info('Obteniendo anotaciones de usuario', { username, page, limit });
+
+    const user = await userRepository.getByUsername(username);
+    if (!user) {
+      throw new AppError('Usuario no encontrado', 404);
+    }
+
+    const result = await userRepository.getAnnotations(user.id, { page, limit });
+
+    res.json({
+      success: true,
+      annotations: result.rows,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.count,
+        pages: result.pages
+      }
+    });
+  });
 }
 
 module.exports = new UsersController();
