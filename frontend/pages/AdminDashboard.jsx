@@ -1,3 +1,4 @@
+import { adminService } from '../services/adminService';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../components/auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -38,16 +39,7 @@ export default function AdminDashboard() {
   const fetchAuditLogs = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/audit-logs', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Error al cargar logs');
-
-      const data = await response.json();
+      const data = await adminService.getAuditLogs();
       setAuditLogs(data.logs || []);
     } catch (error) {
       console.error('Error:', error);

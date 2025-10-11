@@ -18,6 +18,7 @@ import SongsPage from '../pages/SongsPage';
 import SongDetailPage from '../pages/SongDetailPage';
 import CreateSongPage from '../pages/CreateSongPage';
 import AdminDashboard from '../pages/AdminDashboard';
+import UserProfilePage from '../pages/UserProfilePage';
 
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
               <Route path="/songs/:id" element={<SongDetailPage />} />
               <Route path="/songs/create" element={<CreateSongPage />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/users/:username" element={<UserProfilePage />} />
             </Routes>
           </main>
 
