@@ -1,24 +1,12 @@
 const { Annotation, User, Song } = require('../models');
 const { Op } = require('sequelize');
 
-/**
- * Repository para operaciones de Anotaciones
- * Centraliza toda la lógica de acceso a datos
- */
 class AnnotationRepository {
-  /**
-   * Obtener anotaciones de una canción con paginación
-   */
   async getBySong(songId, filters = {}, pagination = {}) {
-    const {
-      sort = 'votes', // 'votes', 'recent', 'oldest'
-      status = 'active'
-    } = filters;
-
+    const { sort = 'votes', status = 'active' } = filters;
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
 
-    // Ordenamiento
     const orderMap = {
       votes: [['upvotes', 'DESC'], ['downvotes', 'ASC']],
       recent: [['created_at', 'DESC']],
@@ -40,14 +28,6 @@ class AnnotationRepository {
           required: false
         }
       ],
-      attributes: {
-        include: [
-          [
-            require('sequelize').sequelize.literal('(upvotes - downvotes)'),
-            'score'
-          ]
-        ]
-      },
       limit: parseInt(limit),
       offset,
       order,
@@ -64,9 +44,6 @@ class AnnotationRepository {
     };
   }
 
-  /**
-   * Obtener anotación por ID
-   */
   async getById(id) {
     return await Annotation.findByPk(id, {
       include: [
@@ -82,13 +59,7 @@ class AnnotationRepository {
     });
   }
 
-  /**
-   * Crear nueva anotación
-   */
   async create(data) {
-    // data = { song_id, user_id, text_selection, start_char, end_char, explanation, cultural_context }
-
-    // Validar que la canción existe
     const song = await Song.findByPk(data.song_id);
     if (!song) {
       const error = new Error('Canción no encontrada');
@@ -111,14 +82,10 @@ class AnnotationRepository {
     return annotation;
   }
 
-  /**
-   * Actualizar anotación
-   */
   async update(id, data, userId) {
     const annotation = await Annotation.findByPk(id);
     if (!annotation) return null;
 
-    // Verificar permisos (solo creador)
     if (annotation.user_id !== userId) {
       const error = new Error('No tienes permiso para editar esta anotación');
       error.code = 'FORBIDDEN';
@@ -135,14 +102,10 @@ class AnnotationRepository {
     return await annotation.update(updateData);
   }
 
-  /**
-   * Eliminar anotación (soft delete)
-   */
   async delete(id, userId) {
     const annotation = await Annotation.findByPk(id);
     if (!annotation) return null;
 
-    // Verificar permisos
     if (annotation.user_id !== userId) {
       const error = new Error('No tienes permiso para eliminar esta anotación');
       error.code = 'FORBIDDEN';
@@ -150,21 +113,13 @@ class AnnotationRepository {
       throw error;
     }
 
-    // Soft delete: marcar como deleted
     await annotation.update({ status: 'deleted' });
     return annotation;
   }
 
-  /**
-   * Votar una anotación
-   */
   async vote(id, voteType, userId) {
-    // voteType: 'up' o 'down'
     const annotation = await Annotation.findByPk(id);
     if (!annotation) return null;
-
-    // TODO: Implementar tabla de votos para evitar votos duplicados
-    // Por ahora simplemente incrementamos
 
     if (voteType === 'up') {
       await annotation.increment('upvotes');
@@ -179,9 +134,6 @@ class AnnotationRepository {
     return await Annotation.findByPk(id);
   }
 
-  /**
-   * Obtener anotaciones de un usuario
-   */
   async getByUser(userId, pagination = {}) {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
@@ -212,9 +164,6 @@ class AnnotationRepository {
     };
   }
 
-  /**
-   * Obtener anotaciones verificadas
-   */
   async getVerified(pagination = {}) {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
@@ -249,9 +198,6 @@ class AnnotationRepository {
     };
   }
 
-  /**
-   * Verificar anotación (admin/moderator)
-   */
   async verify(id, verified = true) {
     const annotation = await Annotation.findByPk(id);
     if (!annotation) return null;
@@ -259,11 +205,7 @@ class AnnotationRepository {
     return await annotation.update({ is_verified: verified });
   }
 
-  /**
-   * Cambiar estado de anotación
-   */
   async updateStatus(id, status, reason = null) {
-    // status: 'active', 'pending', 'rejected', 'hidden', 'deleted'
     const annotation = await Annotation.findByPk(id);
     if (!annotation) return null;
 
@@ -275,17 +217,12 @@ class AnnotationRepository {
     return await annotation.update(updateData);
   }
 
-  /**
-   * Obtener anotaciones pendientes de verificación
-   */
   async getPending(pagination = {}) {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
 
     const result = await Annotation.findAndCountAll({
-      where: {
-        status: 'pending'
-      },
+      where: { status: 'pending' },
       include: [
         {
           association: 'user',
@@ -311,9 +248,6 @@ class AnnotationRepository {
     };
   }
 
-  /**
-   * Obtener estadísticas de una anotación
-   */
   async getStats(id) {
     const annotation = await Annotation.findByPk(id);
     if (!annotation) return null;
@@ -325,9 +259,6 @@ class AnnotationRepository {
     };
   }
 
-  /**
-   * Buscar anotaciones
-   */
   async search(query, pagination = {}) {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;

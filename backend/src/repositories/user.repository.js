@@ -1,32 +1,19 @@
 const { User, Annotation } = require('../models');
 const { Op } = require('sequelize');
 
-/**
- * Repository para operaciones de Usuarios
- * Centraliza toda la lógica de acceso a datos
- */
 class UserRepository {
-  /**
-   * Obtener usuario por ID
-   */
   async getById(id) {
     return await User.findByPk(id, {
       attributes: { exclude: ['password_hash'] }
     });
   }
 
-  /**
-   * Obtener usuario por email (incluye contraseña para login)
-   */
   async getByEmail(email) {
     return await User.findOne({
       where: { email: email.toLowerCase() }
     });
   }
 
-  /**
-   * Obtener usuario por username (perfil público)
-   */
   async getByUsername(username) {
     return await User.findOne({
       where: { username: username.toLowerCase() },
@@ -34,15 +21,12 @@ class UserRepository {
     });
   }
 
-  /**
-   * Obtener todos los usuarios con paginación
-   */
   async getAll(filters = {}, pagination = {}) {
     const {
       search = null,
       role = null,
       country_code = null,
-      sort = 'recent' // 'recent', 'reputation', 'username'
+      sort = 'recent'
     } = filters;
 
     const { page = 1, limit = 50 } = pagination;
@@ -52,7 +36,6 @@ class UserRepository {
     if (role) where.role = role;
     if (country_code) where.country_code = country_code;
 
-    // Búsqueda por username o display_name
     if (search) {
       where[Op.or] = [
         { username: { [Op.like]: `%${search}%` } },
@@ -60,7 +43,6 @@ class UserRepository {
       ];
     }
 
-    // Ordenamiento
     const orderMap = {
       recent: [['created_at', 'DESC']],
       reputation: [['reputation_score', 'DESC']],
@@ -86,13 +68,7 @@ class UserRepository {
     };
   }
 
-  /**
-   * Crear nuevo usuario
-   */
   async create(data) {
-    // data = { email, username, password_hash, display_name, country_code }
-
-    // Verificar duplicados
     const existingEmail = await User.findOne({
       where: { email: data.email.toLowerCase() }
     });
@@ -123,15 +99,11 @@ class UserRepository {
       role: 'user'
     });
 
-    // No retornar contraseña
     const userJSON = user.toJSON();
     delete userJSON.password_hash;
     return userJSON;
   }
 
-  /**
-   * Actualizar usuario
-   */
   async update(id, data) {
     const user = await User.findByPk(id);
     if (!user) return null;
@@ -149,15 +121,11 @@ class UserRepository {
 
     await user.update(updateData);
 
-    // No retornar contraseña
     const userJSON = user.toJSON();
     delete userJSON.password_hash;
     return userJSON;
   }
 
-  /**
-   * Actualizar contraseña
-   */
   async updatePassword(id, newPasswordHash) {
     const user = await User.findByPk(id);
     if (!user) return null;
@@ -166,9 +134,6 @@ class UserRepository {
     return user;
   }
 
-  /**
-   * Incrementar reputación
-   */
   async incrementReputation(id, points = 1) {
     return await User.increment('reputation_score', {
       where: { id },
@@ -176,9 +141,6 @@ class UserRepository {
     });
   }
 
-  /**
-   * Decrementar reputación
-   */
   async decrementReputation(id, points = 1) {
     return await User.increment('reputation_score', {
       where: { id },
@@ -186,9 +148,6 @@ class UserRepository {
     });
   }
 
-  /**
-   * Cambiar rol de usuario (admin)
-   */
   async updateRole(id, role) {
     if (!['user', 'moderator', 'admin'].includes(role)) {
       const error = new Error('Rol inválido');
@@ -202,9 +161,6 @@ class UserRepository {
     return await user.update({ role });
   }
 
-  /**
-   * Obtener anotaciones de un usuario
-   */
   async getAnnotations(userId, pagination = {}) {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
@@ -232,9 +188,6 @@ class UserRepository {
     };
   }
 
-  /**
-   * Obtener estadísticas de un usuario
-   */
   async getStats(userId) {
     const user = await User.findByPk(userId);
     if (!user) return null;
@@ -266,9 +219,6 @@ class UserRepository {
     };
   }
 
-  /**
-   * Obtener usuarios moderadores
-   */
   async getModerators(limit = 10) {
     return await User.findAll({
       where: {
@@ -280,14 +230,11 @@ class UserRepository {
     });
   }
 
-  /**
-   * Obtener usuarios verificados (con más reputación)
-   */
   async getVerified(limit = 10) {
     return await User.findAll({
       where: {
         reputation_score: {
-          [Op.gte]: 100 // Umbral de reputación
+          [Op.gte]: 100
         }
       },
       attributes: { exclude: ['password_hash', 'email'] },
@@ -296,9 +243,6 @@ class UserRepository {
     });
   }
 
-  /**
-   * Eliminar usuario (solo para admins)
-   */
   async delete(id) {
     const user = await User.findByPk(id);
     if (!user) return null;
@@ -307,9 +251,6 @@ class UserRepository {
     return user;
   }
 
-  /**
-   * Verificar que email y username son únicos
-   */
   async exists(email, username) {
     return await User.findOne({
       where: {

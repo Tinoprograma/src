@@ -1,20 +1,13 @@
 const { Album, Artist, Song } = require('../models');
 const { Op } = require('sequelize');
 
-/**
- * Repository para operaciones de Álbumes
- * Centraliza toda la lógica de acceso a datos
- */
 class AlbumRepository {
-  /**
-   * Obtener todos los álbumes con paginación y filtros
-   */
   async getAll(filters = {}, pagination = {}) {
     const {
       search = null,
       artist_id = null,
       release_year = null,
-      sort = 'recent' // 'recent', 'year-desc', 'year-asc', 'title'
+      sort = 'recent'
     } = filters;
 
     const { page = 1, limit = 20 } = pagination;
@@ -24,7 +17,6 @@ class AlbumRepository {
     if (artist_id) where.artist_id = artist_id;
     if (release_year) where.release_year = release_year;
 
-    // Búsqueda por título o artista
     if (search) {
       where[Op.or] = [
         { title: { [Op.like]: `%${search}%` } },
@@ -32,7 +24,6 @@ class AlbumRepository {
       ];
     }
 
-    // Ordenamiento
     const orderMap = {
       recent: [['created_at', 'DESC']],
       'year-desc': [['release_year', 'DESC']],
@@ -47,7 +38,7 @@ class AlbumRepository {
         {
           association: 'artist',
           attributes: ['id', 'name', 'slug'],
-          required: !!search // INNER JOIN si hay búsqueda
+          required: !!search
         }
       ],
       limit: parseInt(limit),
@@ -66,9 +57,6 @@ class AlbumRepository {
     };
   }
 
-  /**
-   * Obtener álbum por ID con canciones
-   */
   async getById(id) {
     return await Album.findByPk(id, {
       include: [
@@ -86,9 +74,6 @@ class AlbumRepository {
     });
   }
 
-  /**
-   * Obtener álbum por slug
-   */
   async getBySlug(slug) {
     return await Album.findOne({
       where: { slug },
@@ -106,13 +91,7 @@ class AlbumRepository {
     });
   }
 
-  /**
-   * Crear nuevo álbum
-   */
   async create(data) {
-    // data = { title, artist_id, release_year, description, cover_image_url, created_by }
-
-    // Validar que artista existe
     const artist = await Artist.findByPk(data.artist_id);
     if (!artist) {
       const error = new Error('Artista no encontrado');
@@ -120,7 +99,6 @@ class AlbumRepository {
       throw error;
     }
 
-    // Generar slug
     const slug = this.generateSlug(data.title);
 
     const album = await Album.create({
@@ -136,14 +114,10 @@ class AlbumRepository {
     return album;
   }
 
-  /**
-   * Actualizar álbum
-   */
   async update(id, data, userId) {
     const album = await Album.findByPk(id);
     if (!album) return null;
 
-    // Verificar permisos (creador o admin)
     if (album.created_by !== userId && userId.role !== 'admin') {
       const error = new Error('No tienes permiso para editar este álbum');
       error.code = 'FORBIDDEN';
@@ -151,7 +125,6 @@ class AlbumRepository {
       throw error;
     }
 
-    // Si cambia el título, regenerar slug
     if (data.title && data.title !== album.title) {
       data.slug = this.generateSlug(data.title);
     }
@@ -159,14 +132,10 @@ class AlbumRepository {
     return await album.update(data);
   }
 
-  /**
-   * Eliminar álbum
-   */
   async delete(id, userId) {
     const album = await Album.findByPk(id);
     if (!album) return null;
 
-    // Verificar permisos
     if (album.created_by !== userId && userId.role !== 'admin') {
       const error = new Error('No tienes permiso para eliminar este álbum');
       error.code = 'FORBIDDEN';
@@ -178,9 +147,6 @@ class AlbumRepository {
     return album;
   }
 
-  /**
-   * Obtener álbumes de un artista
-   */
   async getByArtist(artistId, pagination = {}) {
     const { page = 1, limit = 20 } = pagination;
     const offset = (page - 1) * limit;
@@ -208,9 +174,6 @@ class AlbumRepository {
     };
   }
 
-  /**
-   * Obtener canciones del álbum
-   */
   async getSongs(albumId) {
     return await Album.findByPk(albumId, {
       attributes: ['id', 'title'],
@@ -224,9 +187,6 @@ class AlbumRepository {
     });
   }
 
-  /**
-   * Obtener estadísticas del álbum
-   */
   async getStats(id) {
     const album = await Album.findByPk(id);
     if (!album) return null;
@@ -253,9 +213,6 @@ class AlbumRepository {
     };
   }
 
-  /**
-   * Generar slug
-   */
   generateSlug(title) {
     return title
       .toLowerCase()
@@ -266,9 +223,6 @@ class AlbumRepository {
       .replace(/^-+|-+$/g, '');
   }
 
-  /**
-   * Verificar existencia
-   */
   async exists(title, slug) {
     return await Album.findOne({
       where: {

@@ -350,11 +350,6 @@ const Song = sequelize.define('Song', {
       }
     }
   },
-  album: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-    comment: 'DEPRECATED: usar album_id'
-  },
   release_year: {
     type: DataTypes.INTEGER,
     allowNull: true,
