@@ -1,3 +1,4 @@
+// backend/src/routes/auth.routes.js
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
@@ -11,11 +12,15 @@ router.post('/register', validateUserRegistration, authController.register);
 router.post('/login', validateUserLogin, authController.login);
 
 // Obtener usuario actual (requiere autenticación)
+// El middleware async se espera automáticamente
 router.get('/me', authenticateToken, authController.me);
 
 // Logout (opcional, ya que JWT es stateless)
 router.post('/logout', authenticateToken, (req, res) => {
-  res.json({ message: 'Logout exitoso' });
+  res.json({ 
+    success: true,
+    message: 'Logout exitoso' 
+  });
 });
 
 module.exports = router;

@@ -1,3 +1,4 @@
+// backend/src/middleware/errorHandler.middleware.js
 const logger = require('../utils/logger');
 
 // Clase para errores de la aplicación
@@ -16,10 +17,19 @@ const errorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.message = err.message || 'Error interno del servidor';
 
-  // Log del error
+  // Log del error CON DETALLES COMPLETOS
+  console.error('❌ ERROR COMPLETO:', {
+    message: err.message,
+    statusCode: err.statusCode,
+    name: err.name,
+    stack: err.stack,
+    details: err.details || null
+  });
+
   logger.error({
     message: err.message,
     statusCode: err.statusCode,
+    name: err.name,
     method: req.method,
     path: req.path,
     body: req.body,
@@ -111,14 +121,18 @@ const errorHandler = (err, req, res, next) => {
     code: err.statusCode,
     ...(process.env.NODE_ENV === 'development' && { 
       stack: err.stack,
-      details: err.details
+      details: err.details,
+      name: err.name
     })
   });
 };
 
 // Wrapper para async functions
 const asyncHandler = (fn) => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
+  Promise.resolve(fn(req, res, next)).catch((err) => {
+    console.error('❌ Error en asyncHandler:', err);
+    next(err);
+  });
 };
 
 module.exports = { 

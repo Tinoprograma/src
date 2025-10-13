@@ -140,7 +140,16 @@ class ArtistsController {
    */
   create = asyncHandler(async (req, res) => {
     const { name, country_code, bio } = req.body;
-    const userId = req.user?.id;
+    
+    // Debug: Verificar que req.user existe
+    console.log('📝 Creando artista - req.user:', req.user);
+
+    if (!req.user || !req.user.id) {
+      console.error('❌ req.user no tiene id:', req.user);
+      throw new AppError('Usuario no autenticado o datos incompletos', 401);
+    }
+
+    const userId = req.user.id;
 
     // Validación básica
     if (!name || !name.trim()) {
@@ -200,6 +209,10 @@ class ArtistsController {
     const { name, country_code, bio } = req.body;
     const userId = req.user?.id;
 
+    if (!userId) {
+      throw new AppError('Usuario no autenticado', 401);
+    }
+
     logger.info('Actualizando artista', { artist_id: id, user: userId });
 
     const artist = await artistRepository.getById(id);
@@ -252,6 +265,10 @@ class ArtistsController {
     const { id } = req.params;
     const userId = req.user?.id;
 
+    if (!userId) {
+      throw new AppError('Usuario no autenticado', 401);
+    }
+
     logger.info('Eliminando artista', { artist_id: id, user: userId });
 
     const artist = await artistRepository.getById(id);
@@ -292,7 +309,7 @@ class ArtistsController {
   });
 
   /**
-   * GET /api/artists/similar/:id
+   * GET /api/artists/:id/similar
    * Obtener artistas similares
    */
   getSimilar = asyncHandler(async (req, res) => {

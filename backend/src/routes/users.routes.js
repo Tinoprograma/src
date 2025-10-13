@@ -1,18 +1,17 @@
+// backend/src/routes/users.routes.js
 const express = require('express');
 const router = express.Router();
 const usersController = require('../controllers/users.controller');
-const { authenticateToken, optionalAuth } = require('../middleware/auth.middleware');
+const { authenticateToken } = require('../middleware/auth.middleware');
 
-// Obtener perfil del usuario actual
+// Rutas protegidas (requieren autenticación)
 router.get('/profile', authenticateToken, usersController.getProfile);
-
-// Actualizar perfil del usuario actual
 router.put('/profile', authenticateToken, usersController.updateProfile);
 
-// Obtener usuario público por username
-router.get('/:username', optionalAuth, usersController.getUserByUsername);
-
-// Obtener estadísticas de usuario
-router.get('/:username/stats', optionalAuth, usersController.getUserStats);
+// Rutas públicas dinámicas (Con :username)
+// Estas permiten ver perfiles públicos sin autenticación
+router.get('/:username/stats', usersController.getUserStats);
+router.get('/:username/annotations', usersController.getUserAnnotations);
+router.get('/:username', usersController.getUserByUsername);
 
 module.exports = router;

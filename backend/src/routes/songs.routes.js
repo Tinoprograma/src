@@ -1,12 +1,21 @@
+// backend/src/routes/songs.routes.js
 const express = require('express');
 const router = express.Router();
 const songsController = require('../controllers/songs.controller');
 const { authenticateToken, optionalAuth } = require('../middleware/auth.middleware');
 const { validateSong } = require('../middleware/validation.middleware');
 
-// Rutas públicas
-router.get('/', optionalAuth, songsController.getAll);
-router.get('/:id', optionalAuth, songsController.getById);
+
+// Rutas públicas específicas 
+router.get('/trending', songsController.getTrending);
+router.get('/search/:query', songsController.search);
+
+// Rutas dinámicas 
+router.get('/:id/stats', songsController.getStats);
+router.get('/:id', songsController.getById);
+
+// Ruta GET genérica 
+router.get('/', songsController.getAll);
 
 // Rutas protegidas (requieren autenticación)
 router.post('/', authenticateToken, validateSong, songsController.create);
