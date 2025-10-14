@@ -1,4 +1,5 @@
 const express = require('express');
+const spotifyRoutes = require('./services/spotify');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -64,6 +65,7 @@ app.get('/test/mysql', async (req, res) => {
 // RUTAS PRINCIPALES
 // ============================================
 
+app.use('/api/spotify', spotifyRoutes);
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/users', require('./routes/users.routes'));
 app.use('/api/songs', require('./routes/songs.routes'));
