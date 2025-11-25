@@ -1089,7 +1089,7 @@ const {
 } = useTextSelection('lyrics-container');
 ```
 
-#### 3. **No Hay Rollback en Votación**
+#### 3. **No Hay Rollback en Votación** 
 
 Si `annotationService.vote()` falla, el UI queda con datos incorrectos.
 

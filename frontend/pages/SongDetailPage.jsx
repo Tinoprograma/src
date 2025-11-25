@@ -74,40 +74,61 @@ export default function SongDetailPage() {
     }
   };
 
-  // 👇 NUEVO: Función para buscar en Spotify
-  const fetchSpotifyTrack = async (songData) => {
-    try {
-      setIsLoadingSpotify(true);
-      
-      // Si ya tiene spotify_track_id guardado, usarlo
-      if (songData.spotify_track_id) {
-        const track = await spotifyService.getTrack(songData.spotify_track_id);
-        setSpotifyTrack(track);
-        return;
-      }
-      
-      // Si no, buscar por título y artista
-      const track = await spotifyService.searchTrackAdvanced(
-        songData.title,
-        songData.artist_name,
-        songData.album,
-        songData.release_year
-      );
-      
+const fetchSpotifyTrack = async (songData) => {
+  try {
+    setIsLoadingSpotify(true);
+    
+    // Debug: Ver estructura del objeto song
+    console.log('🔍 Song data completo:', songData);
+    
+    // Si ya tiene spotify_track_id guardado, usarlo
+    if (songData.spotify_track_id) {
+      const track = await spotifyService.getTrack(songData.spotify_track_id);
       setSpotifyTrack(track);
-      
-      // Opcional: Guardar el spotify_track_id en el backend para futuras consultas
-      if (track && track.id) {
-        // TODO: Crear endpoint en backend para guardar spotify_track_id
-        console.log('💡 Spotify track encontrado:', track.id);
-      }
-      
-    } catch (error) {
-      console.error('Error buscando en Spotify:', error);
-    } finally {
-      setIsLoadingSpotify(false);
+      return;
     }
-  };
+    
+    // Extraer nombre del artista de diferentes posibles campos
+    const artistName = songData.artist_name || 
+                      songData.artist?.name || 
+                      songData.Artist?.name ||
+                      'Unknown Artist';
+    
+    // Extraer título del álbum
+    const albumTitle = songData.album_title ||
+                      songData.album?.title ||
+                      songData.Album?.title ||
+                      null;
+    
+    console.log('🎵 Buscando en Spotify:', {
+      title: songData.title,
+      artist: artistName,
+      album: albumTitle,
+      year: songData.release_year
+    });
+    
+    // Si no, buscar por título y artista
+    const track = await spotifyService.searchTrackAdvanced(
+      songData.title,
+      artistName,
+      albumTitle,
+      songData.release_year
+    );
+    
+    setSpotifyTrack(track);
+    
+    // Opcional: Guardar el spotify_track_id en el backend para futuras consultas
+    if (track && track.id) {
+      console.log('💡 Spotify track encontrado:', track.id);
+    }
+    
+  } catch (error) {
+    console.error('Error buscando en Spotify:', error);
+  } finally {
+    setIsLoadingSpotify(false);
+  }
+};
+
 
   const handleTextSelection = () => {
     const selection = window.getSelection();

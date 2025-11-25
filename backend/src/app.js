@@ -70,6 +70,7 @@ app.use('/api/songs', require('./routes/songs.routes'));
 app.use('/api/annotations', require('./routes/annotations.routes'));
 app.use('/api/users', require('./routes/users.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/api/spotify', require('./routes/spotify.routes'));
 
 // ============================================
 // 404 - Rutas no encontradas

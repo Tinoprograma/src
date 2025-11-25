@@ -54,7 +54,6 @@ La arquitectura del proyecto demuestra un entendimiento sólido de los principio
 - **@headlessui/react** (1.7.17) - Componentes UI accesibles sin estilos
 
 #### Manejo de Datos y Estado
-- **@tanstack/react-query** (5.90.1) - Server state management y data fetching
 - **Axios** (1.12.2) - Cliente HTTP para comunicación con API
 
 #### Formularios y Validación
@@ -69,7 +68,6 @@ La arquitectura del proyecto demuestra un entendimiento sólido de los principio
 
 ### Dependencias Destacadas
 
-**⚠️ Nota importante**: El proyecto incluye `mysql2` (3.15.2) en las dependencias del frontend, lo cual es inusual. Esta dependencia normalmente pertenece al backend, ya que las bases de datos no deben ser accesibles directamente desde el cliente.
 
 ---
 
@@ -234,8 +232,6 @@ Los componentes se organizan por funcionalidad (auth, songs, annotations, spotif
 ## 🎨 Patrones de Diseño
 
 ### 1. Patrón Container/Presentational
-
-Aunque no está explícitamente separado en archivos, el código muestra este patrón en acción:
 
 **Ejemplo: SongsPage.jsx** (Container Component)
 ```javascript
@@ -649,38 +645,6 @@ const fetchSpotifyTrack = async (songData) => {
   setSpotifyTrack(track);
 };
 ```
-
-### React Query - No Implementado
-
-**Observación importante**: El proyecto incluye `@tanstack/react-query` (5.90.1) en las dependencias, pero **no está siendo utilizado**.
-
-**Beneficios potenciales de implementarlo**:
-- Cache automático de datos del servidor
-- Revalidación en background
-- Optimistic updates
-- Reducción de código boilerplate
-- Sincronización automática entre ventanas
-
-**Ejemplo de cómo podría implementarse**:
-```javascript
-// En lugar de:
-const [songs, setSongs] = useState([]);
-const [isLoading, setIsLoading] = useState(true);
-
-useEffect(() => {
-  songService.getAll()
-    .then(response => setSongs(response.songs))
-    .finally(() => setIsLoading(false));
-}, []);
-
-// Podría ser:
-const { data: songs, isLoading } = useQuery({
-  queryKey: ['songs'],
-  queryFn: () => songService.getAll()
-});
-```
-
----
 
 ## ✅ Buenas Prácticas Implementadas
 
