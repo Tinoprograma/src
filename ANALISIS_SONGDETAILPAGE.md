@@ -20,14 +20,14 @@
 
 **SongDetailPage** es el componente más complejo de la aplicación (570 líneas). Es responsable de:
 
-- ✅ Mostrar detalles de una canción (título, artista, álbum, estadísticas)
-- ✅ Renderizar las letras de la canción
-- ✅ Permitir selección de texto para crear anotaciones
-- ✅ Mostrar anotaciones existentes como highlights en las letras
-- ✅ Gestionar múltiples anotaciones superpuestas en el mismo texto
-- ✅ CRUD completo de anotaciones
-- ✅ Sistema de votación (upvotes/downvotes)
-- ✅ Integración con Spotify para reproducción de música
+-   Mostrar detalles de una canción (título, artista, álbum, estadísticas)
+-   Renderizar las letras de la canción
+-   Permitir selección de texto para crear anotaciones
+-   Mostrar anotaciones existentes como highlights en las letras
+-   Gestionar múltiples anotaciones superpuestas en el mismo texto
+-   CRUD completo de anotaciones
+-   Sistema de votación (upvotes/downvotes)
+-   Integración con Spotify para reproducción de música
 
 ### Arquitectura Visual
 
@@ -548,12 +548,12 @@ A2: "darte nada"  (6-16)
 **Procesamiento**:
 1. Ordenar por posición: `[A1, A2]`
 2. Procesar A1:
-   - No hay overlap → ✅ Featured
+   - No hay overlap →   Featured
    - `processedRanges = [{ start: 0, end: 12 }]`
 3. Procesar A2:
    - ¿Overlap con (0-12)?
-   - `!(16 <= 0 || 6 >= 12)` = `!(false || false)` = `true` ✅ Hay overlap
-   - ❌ NO es featured
+   - `!(16 <= 0 || 6 >= 12)` = `!(false || false)` = `true`   Hay overlap
+   -   NO es featured
 
 **Resultado**: Solo se muestra A1, pero al hacer click se puede acceder a A2.
 
@@ -777,7 +777,7 @@ const fetchSpotifyTrack = async (songData) => {
 
     // TODO: Guardar el ID para próximas veces
     if (track && track.id) {
-      console.log('💡 Spotify track encontrado:', track.id);
+      console.log('  Spotify track encontrado:', track.id);
       // Falta: await songService.updateSpotifyId(songData.id, track.id);
     }
 
@@ -1018,7 +1018,7 @@ const nextIndex = (currentIndex + 1) % annotationsInRange.length;
 
 ## Problemas y Optimizaciones Potenciales
 
-### ❌ Problemas Actuales
+###   Problemas Actuales
 
 #### 1. **Lógica de Ordenamiento Repetida (DRY Violation)**
 
@@ -1238,12 +1238,12 @@ useEffect(() => {
 
 ---
 
-## ✅ Fortalezas del Componente
+##   Fortalezas del Componente
 
 1. **Implementación Compleja Funcional**
-   - Selección de texto con Selection API ✅
-   - Manejo de anotaciones superpuestas ✅
-   - Ciclo de anotaciones con click ✅
+   - Selección de texto con Selection API  
+   - Manejo de anotaciones superpuestas  
+   - Ciclo de anotaciones con click  
 
 2. **UX Bien Pensada**
    - Feedback visual inmediato (hover, selected)
@@ -1282,10 +1282,10 @@ useEffect(() => {
 **SongDetailPage** es un componente **técnicamente impresionante** que implementa funcionalidad compleja de anotaciones colaborativas. Sin embargo, su tamaño (570 líneas) y complejidad hacen que sea difícil de mantener.
 
 **Recomendaciones prioritarias**:
-1. ✅ Extraer lógica de rendering a componente `<LyricsViewer>`
-2. ✅ Crear custom hooks: `useAnnotations`, `useTextSelection`
-3. ✅ Implementar React Query para gestión de estado del servidor
-4. ✅ Agregar tests (especialmente para `renderLyricsWithAnnotations`)
-5. ✅ Memoizar cálculos costosos con `useMemo`
+1.   Extraer lógica de rendering a componente `<LyricsViewer>`
+2.   Crear custom hooks: `useAnnotations`, `useTextSelection`
+3.   Implementar React Query para gestión de estado del servidor
+4.   Agregar tests (especialmente para `renderLyricsWithAnnotations`)
+5.   Memoizar cálculos costosos con `useMemo`
 
 Con estas refactorizaciones, el componente pasaría de ~570 líneas a ~200 líneas, manteniendo toda la funcionalidad pero con mejor mantenibilidad y performance.

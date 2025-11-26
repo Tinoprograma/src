@@ -41,7 +41,7 @@ class SpotifyService {
       // Token expira en 3600 segundos (1 hora)
       this.tokenExpiry = Date.now() + (response.data.expires_in * 1000);
 
-      logger.info('✅ Token de Spotify obtenido');
+      logger.info('  Token de Spotify obtenido');
       return this.accessToken;
     } catch (error) {
       logger.error('❌ Error obteniendo token de Spotify:', error.response?.data || error.message);
@@ -84,7 +84,7 @@ class SpotifyService {
 
       const track = tracks[0];
 
-      logger.info('✅ Canción encontrada:', track.name);
+      logger.info('  Canción encontrada:', track.name);
 
       return {
         id: track.id,

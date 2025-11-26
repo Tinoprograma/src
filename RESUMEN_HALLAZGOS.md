@@ -2,7 +2,7 @@
 
 ## 🎯 Top 10 Hallazgos Principales
 
-### ✅ Fortalezas
+###   Fortalezas
 
 1. **Arquitectura Modular Sólida**
    - Separación clara entre pages, components, services, hooks y utils
@@ -106,7 +106,7 @@
 
 ## 🚨 Red Flags Detectados
 
-1. ❌ **mysql2 en frontend** - Seguridad crítica
+1.   **mysql2 en frontend** - Seguridad crítica
 2. ⚠️ **Sin tests** - Deuda técnica alta
 3. ⚠️ **React Query no usado** - Optimización no aprovechada
 4. ⚠️ **No hay TypeScript** - Propenso a errores de tipos
@@ -114,7 +114,7 @@
 
 ---
 
-## 💡 Quick Wins (Mejoras Rápidas)
+##   Quick Wins (Mejoras Rápidas)
 
 1. **Remover mysql2 del package.json** (5 minutos)
 2. **Implementar ProtectedRoute component** (30 minutos)

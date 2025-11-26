@@ -9,7 +9,7 @@ Plataforma comunitaria para explicar el significado cultural detrás de las letr
 - **Cache**: Redis
 - **Búsqueda**: Elasticsearch
 
-## 🚀 Configuración Local
+##  Configuración Local
 
 ### Prerequisitos
 - Node.js 18+

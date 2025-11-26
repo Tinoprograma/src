@@ -32,7 +32,7 @@ module.exports = {
       comment: 'URL pública de Spotify'
     });
 
-    console.log('✅ Campos de Spotify agregados a la tabla songs');
+    console.log('  Campos de Spotify agregados a la tabla songs');
   },
 
   async down(queryInterface, Sequelize) {
@@ -41,6 +41,6 @@ module.exports = {
     await queryInterface.removeColumn('songs', 'spotify_preview_url');
     await queryInterface.removeColumn('songs', 'spotify_external_url');
 
-    console.log('✅ Campos de Spotify removidos de la tabla songs');
+    console.log('  Campos de Spotify removidos de la tabla songs');
   }
 };

@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5000;
 async function testDatabaseConnection() {
   try {
     await sequelize.authenticate();
-    console.log('✅ MySQL conectado correctamente');
+    console.log('  MySQL conectado correctamente');
     console.log('📊 Base de datos:', process.env.DB_NAME);
     return true;
   } catch (error) {
@@ -39,7 +39,7 @@ async function startServer() {
   }
 
   const server = app.listen(PORT, () => {
-    console.log('\n🚀 ============================================');
+    console.log('\n ============================================');
     console.log('   SABELO BACKEND - Servidor iniciado');
     console.log('   ============================================');
     console.log(`   🌐 Servidor corriendo en: http://localhost:${PORT}`);
@@ -73,11 +73,11 @@ async function startServer() {
     console.log(`\n⚠️  ${signal} recibido, cerrando servidor...`);
     
     server.close(async () => {
-      console.log('✅ Servidor HTTP cerrado');
+      console.log('  Servidor HTTP cerrado');
       
       try {
         await sequelize.close();
-        console.log('✅ Conexiones a base de datos cerradas');
+        console.log('  Conexiones a base de datos cerradas');
       } catch (error) {
         console.error('❌ Error cerrando conexiones:', error);
       }

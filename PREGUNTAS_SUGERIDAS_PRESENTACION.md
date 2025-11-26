@@ -145,11 +145,11 @@ Este documento contiene preguntas potenciales que podrían surgir durante la pre
 ### Intermedias
 22. **¿Qué vulnerabilidades de OWASP Top 10 están mitigadas y cuáles faltan?**
     - **Respuestas**:
-      - ✅ **Broken Authentication**: JWT con validación
-      - ✅ **Sensitive Data Exposure**: HTTPS (proxy)
-      - ❌ **XSS**: No hay sanitización explícita de inputs
-      - ❌ **CSRF**: No hay protección CSRF
-      - ❌ **Security Misconfiguration**: mysql2 en frontend
+      -   **Broken Authentication**: JWT con validación
+      -   **Sensitive Data Exposure**: HTTPS (proxy)
+      -   **XSS**: No hay sanitización explícita de inputs
+      -   **CSRF**: No hay protección CSRF
+      -   **Security Misconfiguration**: mysql2 en frontend
 
 23. **¿Cómo previenen ataques XSS en las anotaciones?**
     - **Respuesta**: React escapa automáticamente contenido renderizado en JSX. Sin embargo, si usaran `dangerouslySetInnerHTML`, deberían sanitizar con DOMPurify.
@@ -229,7 +229,7 @@ Este documento contiene preguntas potenciales que podrían surgir durante la pre
 
 ---
 
-## 🚀 PERFORMANCE
+##  PERFORMANCE
 
 ### Básicas
 31. **¿Qué optimizaciones de performance ya están implementadas?**
@@ -317,4 +317,4 @@ Este documento contiene preguntas potenciales que podrían surgir durante la pre
 
 ---
 
-**¡Buena suerte en la presentación! 🚀**
+**¡Buena suerte en la presentación! **

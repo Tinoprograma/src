@@ -15,7 +15,7 @@ async function migrate() {
   });
 
   try {
-    console.log('🚀 Iniciando migración: add updated_at to artists');
+    console.log(' Iniciando migración: add updated_at to artists');
     
     // Verificar si la columna ya existe
     const [columns] = await connection.query(
@@ -23,7 +23,7 @@ async function migrate() {
     );
 
     if (columns.length > 0) {
-      console.log('✅ La columna updated_at ya existe en artists');
+      console.log('  La columna updated_at ya existe en artists');
       await connection.end();
       return;
     }
@@ -43,7 +43,7 @@ async function migrate() {
       SET updated_at = created_at
     `);
 
-    console.log('✅ Migración completada exitosamente');
+    console.log('  Migración completada exitosamente');
     
     // Verificar resultado
     const [result] = await connection.query('DESCRIBE artists');

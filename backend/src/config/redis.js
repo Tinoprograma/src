@@ -23,7 +23,7 @@ const client = redis.createClient({
 });
 
 client.on('connect', () => {
-  console.log('✅ Conectado a Redis');
+  console.log('  Conectado a Redis');
 });
 
 client.on('error', (err) => {

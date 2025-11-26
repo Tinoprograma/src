@@ -45,7 +45,7 @@ class AnnotationService {
       
       const response = await this.client.get(`/song/${songId}`);
       
-      console.log('✅ Annotations received:', response.data.annotations?.length || 0);
+      console.log('  Annotations received:', response.data.annotations?.length || 0);
       return response.data;
     } catch (error) {
       console.error('❌ Error fetching annotations:', error.message);
@@ -60,7 +60,7 @@ class AnnotationService {
       
       const response = await this.client.get(`/${annotationId}`);
       
-      console.log('✅ Annotation received');
+      console.log('  Annotation received');
       return response.data;
     } catch (error) {
       console.error('❌ Error fetching annotation:', error.message);
@@ -75,7 +75,7 @@ class AnnotationService {
       
       const response = await this.client.post('/', annotationData);
       
-      console.log('✅ Annotation created:', response.data.annotation?.id);
+      console.log('  Annotation created:', response.data.annotation?.id);
       return response.data;
     } catch (error) {
       console.error('❌ Error creating annotation:', error.message);
@@ -90,7 +90,7 @@ class AnnotationService {
       
       const response = await this.client.put(`/${annotationId}`, annotationData);
       
-      console.log('✅ Annotation updated');
+      console.log('  Annotation updated');
       return response.data;
     } catch (error) {
       console.error('❌ Error updating annotation:', error.message);
@@ -105,7 +105,7 @@ class AnnotationService {
       
       const response = await this.client.delete(`/${annotationId}`);
       
-      console.log('✅ Annotation deleted');
+      console.log('  Annotation deleted');
       return response.data;
     } catch (error) {
       console.error('❌ Error deleting annotation:', error.message);
@@ -122,7 +122,7 @@ class AnnotationService {
         vote_type: voteType 
       });
       
-      console.log('✅ Vote recorded');
+      console.log('  Vote recorded');
       return response.data;
     } catch (error) {
       console.error('❌ Error voting:', error.message);

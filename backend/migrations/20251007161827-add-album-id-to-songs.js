@@ -38,7 +38,7 @@ module.exports = {
       name: 'idx_songs_album_id'
     });
 
-    console.log('✅ Campos de álbum agregados a la tabla songs');
+    console.log('  Campos de álbum agregados a la tabla songs');
   },
 
   async down(queryInterface, Sequelize) {
@@ -46,6 +46,6 @@ module.exports = {
     await queryInterface.removeColumn('songs', 'album_id');
     await queryInterface.removeColumn('songs', 'track_number');
     await queryInterface.removeColumn('songs', 'is_single');
-    console.log('✅ Campos de álbum removidos de la tabla songs');
+    console.log('  Campos de álbum removidos de la tabla songs');
   }
 };
