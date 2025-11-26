@@ -1,9 +1,6 @@
 /**
  * HELPERS
  * Funciones auxiliares reutilizables
- *
- * Este archivo contiene funciones helper que se usan en múltiples partes
- * del proyecto para evitar duplicación de código (DRY principle)
  */
 
 /**
@@ -14,14 +11,12 @@
  * @returns {string} slug
  *
  * @example
- * generateSlug("La Bachata") // => "la-bachata"
- * generateSlug("Niño con Ñ") // => "nino-con-n"
  */
 function generateSlug(text) {
   if (!text) return '';
 
   return text
-    .toLowerCase() // Convertir a minúsculas
+    .toLowerCase() // Convertir a minusculas
     .normalize('NFD') // Normalizar caracteres unicode
     .replace(/[\u0300-\u036f]/g, '') // Remover acentos
     .replace(/[^\w\s-]/g, '') // Remover caracteres especiales
@@ -75,10 +70,10 @@ function formatDate(date, format = 'short') {
 }
 
 /**
- * Calcular paginación
+ * Calcular paginacion
  *
- * @param {number} page - Página actual (1-indexed)
- * @param {number} limit - Elementos por página
+ * @param {number} page - Pagina actual (1-indexed)
+ * @param {number} limit - Elementos por pagina
  * @param {number} total - Total de elementos
  * @returns {Object} { offset, limit, pages, hasNext, hasPrev }
  *
@@ -106,7 +101,7 @@ function paginate(page = 1, limit = 20, total = 0) {
 
 /**
  * Sanitizar HTML para prevenir XSS
- * Versión básica - considera usar librería como 'sanitize-html' para casos complejos
+ * Version basica - considera usar libreria como 'sanitize-html' para casos complejos
  *
  * @param {string} html - HTML a sanitizar
  * @returns {string} HTML sanitizado
@@ -124,7 +119,7 @@ function sanitizeHtml(html) {
 }
 
 /**
- * Calcular puntuación de reputación
+ * Calcular puntuacion de reputacion
  *
  * @param {number} upvotes - Votos positivos
  * @param {number} downvotes - Votos negativos
@@ -139,15 +134,15 @@ function calculateScore(upvotes = 0, downvotes = 0) {
 }
 
 /**
- * Truncar texto a longitud máxima
+ * Truncar texto a longitud maxima
  *
  * @param {string} text - Texto a truncar
- * @param {number} maxLength - Longitud máxima
+ * @param {number} maxLength - Longitud mï¿½xima
  * @param {string} suffix - Sufijo a agregar (default: '...')
  * @returns {string} texto truncado
  *
  * @example
- * truncate("Esta es una canción muy larga", 15) // => "Esta es una..."
+ * truncate("Esta es una cancion muy larga", 15) // => "Esta es una..."
  */
 function truncate(text, maxLength = 100, suffix = '...') {
   if (!text) return '';
@@ -157,7 +152,7 @@ function truncate(text, maxLength = 100, suffix = '...') {
 }
 
 /**
- * Validar email básico
+ * Validar email basico
  *
  * @param {string} email
  * @returns {boolean}
@@ -185,7 +180,7 @@ function isValidUrl(url) {
 }
 
 /**
- * Delay async (útil para rate limiting, retries, etc.)
+ * Delay async (util para rate limiting, retries, etc.)
  *
  * @param {number} ms - Milisegundos a esperar
  * @returns {Promise}
@@ -198,7 +193,7 @@ function delay(ms) {
 }
 
 /**
- * Generar número aleatorio en rango
+ * Generar numero aleatorio en rango
  *
  * @param {number} min
  * @param {number} max
@@ -223,7 +218,7 @@ function capitalize(text) {
 }
 
 /**
- * Validar que un valor esté en un array de valores permitidos
+ * Validar que un valor esta en un array de valores permitidos
  *
  * @param {*} value - Valor a validar
  * @param {Array} allowedValues - Valores permitidos
