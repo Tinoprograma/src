@@ -1,12 +1,12 @@
-// backend/src/middleware/auth.middleware.js
+
 const jwt = require('jsonwebtoken');
 const userRepository = require('../repositories/user.repository');
 
-// Autenticación requerida - AHORA ES ASYNC
+
 const authenticateToken = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1]; 
 
     if (!token) {
       return res.status(401).json({ 
@@ -15,7 +15,7 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // jwt.verify es síncrono
+  
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret-key');
@@ -61,7 +61,7 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Autenticación opcional - AHORA ES ASYNC
+// Autenticación opcional
 const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
@@ -83,7 +83,7 @@ const optionalAuth = async (req, res, next) => {
           };
         }
       } catch (error) {
-        // Si el token falla, simplemente no autenticar
+        
         console.debug('Token opcional inválido, continuando sin autenticación');
       }
     }

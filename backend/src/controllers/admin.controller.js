@@ -9,11 +9,6 @@ const { logAudit } = require('../middleware/admin.middleware');
 
 class AdminController {
   // ========== ANOTACIONES ==========
-
-  /**
-   * PATCH /api/admin/annotations/:annotationId/verify
-   * Verificar anotación
-   */
   verifyAnnotation = asyncHandler(async (req, res) => {
     const { annotationId } = req.params;
     const { verified } = req.body;
@@ -49,7 +44,7 @@ class AdminController {
   });
 
   /**
-   * DELETE /api/admin/annotations/:annotationId
+  
    * Eliminar anotación
    */
   deleteAnnotation = asyncHandler(async (req, res) => {
@@ -86,7 +81,7 @@ class AdminController {
   // ========== CANCIONES ==========
 
   /**
-   * PATCH /api/admin/songs/:songId/lyrics
+
    * Actualizar letras de canción
    */
   updateSongLyrics = asyncHandler(async (req, res) => {
@@ -125,7 +120,6 @@ class AdminController {
   });
 
   /**
-   * DELETE /api/admin/songs/:songId
    * Eliminar canción
    */
   deleteSong = asyncHandler(async (req, res) => {
@@ -161,7 +155,6 @@ class AdminController {
   // ========== ARTISTAS ==========
 
   /**
-   * PATCH /api/admin/artists/:artistId
    * Actualizar artista
    */
   updateArtist = asyncHandler(async (req, res) => {
@@ -200,7 +193,6 @@ class AdminController {
   });
 
   /**
-   * DELETE /api/admin/artists/:artistId
    * Eliminar artista
    */
   deleteArtist = asyncHandler(async (req, res) => {
@@ -236,7 +228,6 @@ class AdminController {
   // ========== ÁLBUMES ==========
 
   /**
-   * PATCH /api/admin/albums/:albumId
    * Actualizar álbum
    */
   updateAlbum = asyncHandler(async (req, res) => {
@@ -275,7 +266,7 @@ class AdminController {
   });
 
   /**
-   * DELETE /api/admin/albums/:albumId
+  
    * Eliminar álbum
    */
   deleteAlbum = asyncHandler(async (req, res) => {
@@ -311,7 +302,6 @@ class AdminController {
   // ========== AUDITORÍA ==========
 
   /**
-   * GET /api/admin/audit-logs
    * Obtener logs de auditoría
    */
   getAuditLogs = asyncHandler(async (req, res) => {
@@ -352,10 +342,9 @@ class AdminController {
     });
   });
 
-  // ========== USUARIOS (Admin management) ==========
+  // ========== USUARIOS) =========
 
   /**
-   * GET /api/admin/users
    * Obtener lista de usuarios (admin)
    */
   getAllUsers = asyncHandler(async (req, res) => {
@@ -379,7 +368,7 @@ class AdminController {
   });
 
   /**
-   * PATCH /api/admin/users/:userId/role
+
    * Cambiar rol de usuario
    */
   updateUserRole = asyncHandler(async (req, res) => {
@@ -414,7 +403,7 @@ class AdminController {
   });
 
   /**
-   * DELETE /api/admin/users/:userId
+ 
    * Eliminar usuario (muy destructivo)
    */
   deleteUser = asyncHandler(async (req, res) => {
