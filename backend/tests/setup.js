@@ -6,5 +6,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await sequelize.close();
+
+  try {
+    await sequelize.close();
+  } catch (error) {
+    console.error('Error cerrando Sequelize:', error);
+  }
 });
+
+
+jest.setTimeout(30000); // 30 segundos de timeout

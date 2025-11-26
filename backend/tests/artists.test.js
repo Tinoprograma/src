@@ -17,7 +17,7 @@ beforeAll(async () => {
       password
     });
 
-  // LOGIN (ACA sale el token REAL)
+  // LOGIN 
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({
@@ -33,7 +33,7 @@ test('Crear artista correctamente', async () => {
     .post('/api/artists')
     .set('Authorization', `Bearer ${token}`)
     .send({
-      name: 'Artista Test'
+      name: `Artista Test ${Date.now()}` //  Nombre único
     });
 
   expect(res.statusCode).toBe(201);

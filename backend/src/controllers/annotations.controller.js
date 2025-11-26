@@ -131,41 +131,45 @@ class AnnotationsController {
    * Crear nueva anotación
    */
   create = asyncHandler(async (req, res) => {
-    const {
-      song_id,
-      text_selection,
-      start_char,
-      end_char,
-      explanation,
-      cultural_context
-    } = req.body;
+  const {
+    song_id,
+    text_selection,
+    start_char,
+    end_char,
+    explanation,
+    cultural_context
+  } = req.body;
 
-    const userId = req.user?.id;
+  const userId = req.user?.id;
 
-    // Validación básica
-    if (!song_id) {
-      throw new AppError('ID de canción requerido', 400);
-    }
+  // Validación básica
+  if (!song_id) {
+    throw new AppError('ID de canción requerido', 400);
+  }
 
-    if (!text_selection || !text_selection.trim()) {
-      throw new AppError('Texto seleccionado requerido', 400);
-    }
+  if (!text_selection || !text_selection.trim()) {
+    throw new AppError('Texto seleccionado requerido', 400);
+  }
 
-    if (text_selection.trim().length > 500) {
-      throw new AppError('Texto seleccionado no puede exceder 500 caracteres', 400);
-    }
+  if (text_selection.trim().length > 500) {
+    throw new AppError('Texto seleccionado no puede exceder 500 caracteres', 400);
+  }
 
-    if (start_char === undefined || start_char === null || start_char < 0) {
-      throw new AppError('Posición inicial válida requerida', 400);
-    }
+  if (start_char === undefined || start_char === null || start_char < 0) {
+    throw new AppError('Posición inicial válida requerida', 400);
+  }
 
-    if (end_char === undefined || end_char === null || end_char <= 0) {
-      throw new AppError('Posición final válida requerida', 400);
-    }
+  if (end_char === undefined || end_char === null || end_char <= 0) {
+    throw new AppError('Posición final válida requerida', 400);
+  }
 
-    if (!explanation || explanation.trim().length < 10) {
-      throw new AppError('Explicación debe tener al menos 10 caracteres', 400);
-    }
+  if (start_char >= end_char) {
+    throw new AppError('La posición inicial debe ser menor que la final', 400);
+  }
+
+  if (!explanation || explanation.trim().length < 10) {
+    throw new AppError('Explicación debe tener al menos 10 caracteres', 400);
+  }
 
     logger.info('Creando nueva anotación', {
       user: userId,
