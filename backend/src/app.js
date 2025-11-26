@@ -11,11 +11,8 @@ const logger = require('./utils/logger');
 // Inicializar app
 const app = express();
 
-// ============================================
-// MIDDLEWARE DE SEGURIDAD Y PARSEO
-// ============================================
 
-// Helmet: headers de seguridad
+
 app.use(helmet());
 
 // CORS
@@ -24,18 +21,15 @@ app.use(cors({
   credentials: true
 }));
 
-// Compression
+
 app.use(compression());
 
 // Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// ============================================
-// LOGGING
-// ============================================
 
-// Morgan para HTTP logging
+
 app.use(morgan((tokens, req, res) => {
   const duration = tokens['response-time'](req, res);
   logger.http(
@@ -45,14 +39,12 @@ app.use(morgan((tokens, req, res) => {
     parseFloat(duration),
     req.user?.id
   );
-  return null; // No loguear en consola (ya lo hace morgan)
+  return null; 
 }));
 
-// ============================================
-// RUTAS
-// ============================================
 
-// Health check
+// RUTAS
+
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -72,9 +64,7 @@ app.use('/api/users', require('./routes/users.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
 app.use('/api/spotify', require('./routes/spotify.routes'));
 
-// ============================================
 // 404 - Rutas no encontradas
-// ============================================
 
 app.use((req, res) => {
   res.status(404).json({
@@ -85,9 +75,7 @@ app.use((req, res) => {
   });
 });
 
-// ============================================
-// ERROR HANDLER (Debe ser último)
-// ============================================
+// ERROR HANDLER 
 
 app.use(errorHandler);
 

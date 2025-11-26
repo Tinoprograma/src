@@ -1,12 +1,3 @@
-/**
- * SONG MODEL
- * Modelo de canciones
- *
- * Responsabilidades:
- * - Definir schema de canciones
- * - Validaciones de campos
- * - Asociaciones con otros modelos
- */
 
 module.exports = (sequelize, DataTypes) => {
   const Song = sequelize.define('Song', {

@@ -4,9 +4,8 @@ require('dotenv').config();
 
 const PORT = process.env.PORT || 5000;
 
-// ============================================
 // VERIFICAR CONEXIÓN A BASE DE DATOS
-// ============================================
+
 async function testDatabaseConnection() {
   try {
     await sequelize.authenticate();
@@ -25,9 +24,9 @@ async function testDatabaseConnection() {
   }
 }
 
-// ============================================
+
 // INICIAR SERVIDOR
-// ============================================
+
 async function startServer() {
   // Verificar conexión a DB primero
   const dbConnected = await testDatabaseConnection();
@@ -54,7 +53,7 @@ async function startServer() {
     console.log('   ============================================\n');
   });
 
-  // Manejo de errores del servidor
+  // Manejo de errores 
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
       console.error(` Puerto ${PORT} ya está en uso`);
@@ -66,9 +65,9 @@ async function startServer() {
     }
   });
 
-  // ============================================
+  
   // GRACEFUL SHUTDOWN
-  // ============================================
+ 
   const gracefulShutdown = async (signal) => {
     console.log(`\n  ${signal} recibido, cerrando servidor...`);
     
@@ -97,5 +96,5 @@ async function startServer() {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
-// Iniciar el servidor
+
 startServer();

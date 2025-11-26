@@ -1,13 +1,4 @@
-/**
- * AUTH SERVICE
- * Lógica de negocio para autenticación y autorización
- *
- * Responsabilidades:
- * - Hash y verificación de contraseñas
- * - Generación y verificación de JWT tokens
- * - Lógica de registro y login
- * - Validaciones de negocio
- */
+
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -16,31 +7,31 @@ const logger = require('../utils/logger');
 
 class AuthService {
   /**
-   * Registrar nuevo usuario
+   
    * @param {Object} userData - Datos del usuario { email, username, password, display_name, country_code }
    * @returns {Object} { user, token }
    */
   async register(userData) {
     const { email, username, password, display_name, country_code } = userData;
 
-    // Validar email y username únicos
+    // Validar email y username
     const existing = await userRepository.exists(email, username);
     if (existing) {
       if (existing.email === email.toLowerCase()) {
-        const error = new Error('El email ya está registrado');
+        const error = new Error('El email ya estï¿½ registrado');
         error.code = 'EMAIL_EXISTS';
         error.statusCode = 409;
         throw error;
       }
       if (existing.username === username.toLowerCase()) {
-        const error = new Error('El username ya está registrado');
+        const error = new Error('El username ya estï¿½ registrado');
         error.code = 'USERNAME_EXISTS';
         error.statusCode = 409;
         throw error;
       }
     }
 
-    // Hash de contraseña
+    // Hash 
     const password_hash = await this.hashPassword(password);
 
     // Crear usuario
@@ -76,25 +67,27 @@ class AuthService {
    * @param {string} password
    * @returns {Object} { user, token }
    */
+
   async login(email, password) {
+
     // Buscar usuario por email
     const user = await userRepository.getByEmail(email);
     if (!user) {
       logger.warn('Intento de login con email no registrado', { email });
-      const error = new Error('Credenciales inválidas');
+      const error = new Error('Credenciales invï¿½lidas');
       error.code = 'INVALID_CREDENTIALS';
       error.statusCode = 401;
       throw error;
     }
 
-    // Verificar contraseña
+    // Verificar contrasena
     const isValidPassword = await this.verifyPassword(password, user.password_hash);
     if (!isValidPassword) {
-      logger.warn('Intento de login con contraseña incorrecta', {
+      logger.warn('Intento de login con contraseï¿½a incorrecta', {
         user_id: user.id,
         email
       });
-      const error = new Error('Credenciales inválidas');
+      const error = new Error('Credenciales invï¿½lidas');
       error.code = 'INVALID_CREDENTIALS';
       error.statusCode = 401;
       throw error;
@@ -134,7 +127,7 @@ class AuthService {
         err.statusCode = 401;
         throw err;
       }
-      const err = new Error('Token inválido');
+      const err = new Error('Token invï¿½lido');
       err.code = 'INVALID_TOKEN';
       err.statusCode = 403;
       throw err;
@@ -152,13 +145,14 @@ class AuthService {
   }
 
   /**
-   * Cambiar contraseña
+   * Cambiar contrasena
    * @param {number} userId
    * @param {string} currentPassword
    * @param {string} newPassword
    */
   async changePassword(userId, currentPassword, newPassword) {
-    // Obtener usuario con contraseña
+    // Obtener usuario con cotra 
+
     const user = await userRepository.getById(userId);
     if (!user) {
       const error = new Error('Usuario no encontrado');
@@ -167,44 +161,44 @@ class AuthService {
       throw error;
     }
 
-    // Obtener contraseña actual
+    // Obtener contraseÃ±na
     const userWithPassword = await userRepository.getByEmail(user.email);
 
-    // Verificar contraseña actual
+    // Verificar contraseÃ±a
     const isValid = await this.verifyPassword(
       currentPassword,
       userWithPassword.password_hash
     );
 
     if (!isValid) {
-      logger.warn('Intento de cambiar contraseña con contraseña incorrecta', {
+      logger.warn('Intento de cambiar contraseï¿½a con contraseï¿½a incorrecta', {
         user_id: userId
       });
-      const error = new Error('Contraseña actual incorrecta');
+      const error = new Error('Contraseï¿½a actual incorrecta');
       error.code = 'INVALID_PASSWORD';
       error.statusCode = 401;
       throw error;
     }
 
-    // Validar que nueva contraseña sea diferente
+    // Validar que nueva contraseÃ±na
     if (currentPassword === newPassword) {
-      const error = new Error('La nueva contraseña debe ser diferente');
+      const error = new Error('La nueva contraseï¿½a debe ser diferente');
       error.code = 'SAME_PASSWORD';
       error.statusCode = 400;
       throw error;
     }
 
-    // Hashear nueva contraseña
+    // Hashear nueva contraseÃ±na
     const newPasswordHash = await this.hashPassword(newPassword);
 
     // Actualizar
     await userRepository.updatePassword(userId, newPasswordHash);
 
-    logger.info('Contraseña cambiada exitosamente', { user_id: userId });
+    logger.info('Contraseï¿½a cambiada exitosamente', { user_id: userId });
   }
 
   /**
-   * Hashear contraseña
+   * Hashear contraseÃ±a
    * @param {string} password
    * @returns {string} hash
    */
@@ -214,9 +208,9 @@ class AuthService {
   }
 
   /**
-   * Verificar contraseña
-   * @param {string} password - Contraseña en texto plano
-   * @param {string} hash - Hash almacenado
+   * Verificar contraseÃ±a
+   * @param {string} password - 
+   * @param {string} hash - 
    * @returns {boolean}
    */
   async verifyPassword(password, hash) {
@@ -237,17 +231,17 @@ class AuthService {
   }
 
   /**
-   * Obtener JWT secret (con validación)
+   * Obtener JWT secret 
    * @returns {string}
    */
   getJwtSecret() {
     const secret = process.env.JWT_SECRET;
 
     if (!secret || secret === 'secret-key') {
-      logger.error('   JWT_SECRET no configurado o usa valor por defecto inseguro');
-      // En producción, esto debería fallar
+      logger.error('ï¿½  JWT_SECRET no configurado o usa valor por defecto inseguro');
+      // En producciï¿½n, esto deberï¿½a fallar
       if (process.env.NODE_ENV === 'production') {
-        throw new Error('JWT_SECRET debe estar configurado en producción');
+        throw new Error('JWT_SECRET debe estar configurado en producciï¿½n');
       }
     }
 
@@ -255,7 +249,7 @@ class AuthService {
   }
 
   /**
-   * Validar fortaleza de contraseña
+   * Validar fortaleza de contrase
    * @param {string} password
    * @returns {Object} { valid: boolean, errors: string[] }
    */
@@ -263,17 +257,8 @@ class AuthService {
     const errors = [];
 
     if (password.length < 8) {
-      errors.push('La contraseña debe tener al menos 8 caracteres');
+      errors.push('La contraseï¿½a debe tener al menos 8 caracteres');
     }
-
-    // Opcional: agregar más validaciones
-    // if (!/[A-Z]/.test(password)) {
-    //   errors.push('Debe contener al menos una mayúscula');
-    // }
-    // if (!/[0-9]/.test(password)) {
-    //   errors.push('Debe contener al menos un número');
-    // }
-
     return {
       valid: errors.length === 0,
       errors
