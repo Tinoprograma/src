@@ -75,13 +75,13 @@ module.exports = {
     await queryInterface.addIndex('audit_logs', ['admin_id'], { name: 'idx_audit_logs_admin_id' });
     await queryInterface.addIndex('audit_logs', ['entity_type', 'entity_id'], { name: 'idx_audit_logs_entity' });
 
-    console.log('✅ Sistema de roles y auditoría creado');
+    console.log('  Sistema de roles y auditoría creado');
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('audit_logs');
     await queryInterface.removeColumn('users', 'is_active');
     await queryInterface.removeColumn('users', 'role');
-    console.log('✅ Sistema de roles y auditoría eliminado');
+    console.log('  Sistema de roles y auditoría eliminado');
   }
 };

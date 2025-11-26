@@ -86,10 +86,6 @@ module.exports = (sequelize, DataTypes) => {
     ]
   });
 
-  /**
-   * Define associations for User model
-   * This method will be called by the model loader
-   */
   User.associate = (models) => {
     // Un usuario puede crear múltiples artistas
     User.hasMany(models.Artist, {

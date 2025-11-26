@@ -32,7 +32,7 @@ class AnnotationService {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        console.error('❌ Error en petición:', error.response?.data || error.message);
+        console.error(' Error en petición:', error.response?.data || error.message);
         return Promise.reject(error);
       }
     );
@@ -41,14 +41,14 @@ class AnnotationService {
   // Obtener todas las anotaciones de una canción
   async getBySongId(songId) {
     try {
-      console.log('📊 Fetching annotations for song:', songId);
+      console.log(' Fetching annotations for song:', songId);
       
       const response = await this.client.get(`/song/${songId}`);
       
-      console.log('✅ Annotations received:', response.data.annotations?.length || 0);
+      console.log('  Annotations received:', response.data.annotations?.length || 0);
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching annotations:', error.message);
+      console.error(' Error fetching annotations:', error.message);
       throw error;
     }
   }
@@ -56,14 +56,14 @@ class AnnotationService {
   // Obtener una anotación específica
   async getById(annotationId) {
     try {
-      console.log('📊 Fetching annotation:', annotationId);
+      console.log(' Fetching annotation:', annotationId);
       
       const response = await this.client.get(`/${annotationId}`);
       
-      console.log('✅ Annotation received');
+      console.log('  Annotation received');
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching annotation:', error.message);
+      console.error(' Error fetching annotation:', error.message);
       throw error;
     }
   }
@@ -71,14 +71,14 @@ class AnnotationService {
   // Crear una nueva anotación
   async create(annotationData) {
     try {
-      console.log('📝 Creating annotation:', annotationData);
+      console.log(' Creating annotation:', annotationData);
       
       const response = await this.client.post('/', annotationData);
       
-      console.log('✅ Annotation created:', response.data.annotation?.id);
+      console.log('  Annotation created:', response.data.annotation?.id);
       return response.data;
     } catch (error) {
-      console.error('❌ Error creating annotation:', error.message);
+      console.error(' Error creating annotation:', error.message);
       throw error;
     }
   }
@@ -86,14 +86,14 @@ class AnnotationService {
   // Actualizar una anotación
   async update(annotationId, annotationData) {
     try {
-      console.log('📝 Updating annotation:', annotationId);
+      console.log(' Updating annotation:', annotationId);
       
       const response = await this.client.put(`/${annotationId}`, annotationData);
       
-      console.log('✅ Annotation updated');
+      console.log('  Annotation updated');
       return response.data;
     } catch (error) {
-      console.error('❌ Error updating annotation:', error.message);
+      console.error(' Error updating annotation:', error.message);
       throw error;
     }
   }
@@ -105,10 +105,10 @@ class AnnotationService {
       
       const response = await this.client.delete(`/${annotationId}`);
       
-      console.log('✅ Annotation deleted');
+      console.log('  Annotation deleted');
       return response.data;
     } catch (error) {
-      console.error('❌ Error deleting annotation:', error.message);
+      console.error(' Error deleting annotation:', error.message);
       throw error;
     }
   }
@@ -122,10 +122,10 @@ class AnnotationService {
         vote_type: voteType 
       });
       
-      console.log('✅ Vote recorded');
+      console.log('  Vote recorded');
       return response.data;
     } catch (error) {
-      console.error('❌ Error voting:', error.message);
+      console.error(' Error voting:', error.message);
       throw error;
     }
   }

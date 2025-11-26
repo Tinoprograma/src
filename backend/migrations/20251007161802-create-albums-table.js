@@ -83,11 +83,11 @@ module.exports = {
       name: 'idx_albums_slug'
     });
 
-    console.log('✅ Tabla albums creada exitosamente');
+    console.log('  Tabla albums creada exitosamente');
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('albums');
-    console.log('✅ Tabla albums eliminada');
+    console.log('  Tabla albums eliminada');
   }
 };

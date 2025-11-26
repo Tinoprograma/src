@@ -142,10 +142,10 @@ class ArtistsController {
     const { name, country_code, bio } = req.body;
     
     // Debug: Verificar que req.user existe
-    console.log('📝 Creando artista - req.user:', req.user);
+    console.log(' Creando artista - req.user:', req.user);
 
     if (!req.user || !req.user.id) {
-      console.error('❌ req.user no tiene id:', req.user);
+      console.error(' req.user no tiene id:', req.user);
       throw new AppError('Usuario no autenticado o datos incompletos', 401);
     }
 

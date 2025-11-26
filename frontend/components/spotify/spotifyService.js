@@ -3,7 +3,7 @@ import api from '../../utils/api';
 class SpotifyService {
   async searchTrack(title, artist, album = null, year = null) {
     try {
-      console.log('🔍 [BACKEND] Buscando:', { title, artist });
+      console.log(' [BACKEND] Buscando:', { title, artist });
 
       const response = await api.post('/spotify/search', {
         title,
@@ -13,14 +13,14 @@ class SpotifyService {
       });
 
       if (!response.data.track) {
-        console.log('⚠️ No encontrado');
+        console.log(' No encontrado');
         return null;
       }
 
-      console.log('✅ Encontrado:', response.data.track.name);
+      console.log(' Encontrado:', response.data.track.name);
       return response.data.track;
     } catch (error) {
-      console.error('❌ Error:', error.message);
+      console.error(' Error:', error.message);
       return null;
     }
   }
@@ -30,7 +30,7 @@ class SpotifyService {
       const response = await api.get(`/spotify/track/${trackId}`);
       return response.data.track;
     } catch (error) {
-      console.error('❌ Error:', error.message);
+      console.error(' Error:', error.message);
       return null;
     }
   }

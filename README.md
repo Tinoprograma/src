@@ -10,7 +10,7 @@
 
 Sabelo es una aplicación web moderna que permite a los usuarios crear, compartir y votar anotaciones sobre letras de canciones, con especial enfoque en música latina y referencias culturales.
 
----
+##  Configuración Local
 
 ## ✨ Características Principales
 

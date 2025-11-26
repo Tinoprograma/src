@@ -64,7 +64,7 @@ export default function SongDetailPage() {
       // 👇 NUEVO: Buscar en Spotify
       fetchSpotifyTrack(songResponse.song);
       
-      console.log('✅ Canción y anotaciones cargadas');
+      console.log('  Canción y anotaciones cargadas');
       
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -79,7 +79,7 @@ const fetchSpotifyTrack = async (songData) => {
     setIsLoadingSpotify(true);
     
     // Debug: Ver estructura del objeto song
-    console.log('🔍 Song data completo:', songData);
+    console.log(' Song data completo:', songData);
     
     // Si ya tiene spotify_track_id guardado, usarlo
     if (songData.spotify_track_id) {
@@ -119,7 +119,7 @@ const fetchSpotifyTrack = async (songData) => {
     
     // Opcional: Guardar el spotify_track_id en el backend para futuras consultas
     if (track && track.id) {
-      console.log('💡 Spotify track encontrado:', track.id);
+      console.log('  Spotify track encontrado:', track.id);
     }
     
   } catch (error) {

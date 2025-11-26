@@ -88,9 +88,6 @@ module.exports = (sequelize, DataTypes) => {
     ]
   });
 
-  /**
-   * Define associations for Artist model
-   */
   Artist.associate = (models) => {
     // Artista pertenece a un usuario creador
     Artist.belongsTo(models.User, {

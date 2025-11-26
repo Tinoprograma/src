@@ -32,7 +32,7 @@ class AlbumService {
       const response = await this.client.get('/', { params });
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching albums:', error);
+      console.error('  Error fetching albums:', error);
       throw error;
     }
   }
@@ -42,7 +42,7 @@ class AlbumService {
       const response = await this.client.get(`/${albumId}`);
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching album:', error);
+      console.error('  Error fetching album:', error);
       throw error;
     }
   }
@@ -52,7 +52,7 @@ class AlbumService {
       const response = await this.client.get(`/artist/${artistId}`);
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching albums by artist:', error);
+      console.error('  Error fetching albums by artist:', error);
       throw error;
     }
   }
@@ -62,7 +62,7 @@ class AlbumService {
       const response = await this.client.post('/', albumData);
       return response.data;
     } catch (error) {
-      console.error('❌ Error creating album:', error);
+      console.error('  Error creating album:', error);
       throw error;
     }
   }
@@ -72,7 +72,7 @@ class AlbumService {
       const response = await this.client.put(`/${albumId}`, albumData);
       return response.data;
     } catch (error) {
-      console.error('❌ Error updating album:', error);
+      console.error('  Error updating album:', error);
       throw error;
     }
   }
@@ -82,7 +82,7 @@ class AlbumService {
       const response = await this.client.delete(`/${albumId}`);
       return response.data;
     } catch (error) {
-      console.error('❌ Error deleting album:', error);
+      console.error('  Error deleting album:', error);
       throw error;
     }
   }
@@ -92,7 +92,7 @@ class AlbumService {
       const response = await this.client.get(`/${albumId}/songs`);
       return response.data;
     } catch (error) {
-      console.error('❌ Error fetching album songs:', error);
+      console.error('  Error fetching album songs:', error);
       throw error;
     }
   }

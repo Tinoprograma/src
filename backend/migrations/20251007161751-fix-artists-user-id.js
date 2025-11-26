@@ -11,11 +11,11 @@ module.exports = {
       comment: 'Usuario que creó el artista'
     });
 
-    console.log('✅ Campo user_id agregado a la tabla artists');
+    console.log('  Campo user_id agregado a la tabla artists');
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.removeColumn('artists', 'user_id');
-    console.log('✅ Campo user_id removido de la tabla artists');
+    console.log('  Campo user_id removido de la tabla artists');
   }
 };

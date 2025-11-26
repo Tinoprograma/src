@@ -12,9 +12,9 @@ const client = new Client({
 async function testConnection() {
   try {
     const health = await client.cluster.health();
-    console.log('✅ Elasticsearch conectado:', health.body.status);
+    console.log('  Elasticsearch conectado:', health.body.status);
   } catch (error) {
-    console.error('❌ Error conectando a Elasticsearch:', error.message);
+    console.error(' Error conectando a Elasticsearch:', error.message);
   }
 }
 
