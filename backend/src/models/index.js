@@ -1,23 +1,5 @@
 /**
  * MODELS ORCHESTRATOR - SABELO
- *
- * Este archivo es el punto central de carga de modelos.
- *
- * Responsabilidades:
- * 1. Cargar la conexión a BD
- * 2. Importar y inicializar todos los modelos
- * 3. Ejecutar asociaciones entre modelos
- * 4. Exportar modelos para uso en toda la app
- *
- * Estructura:
- * - Cada modelo está en su propio archivo (user.model.js, artist.model.js, etc.)
- * - Cada modelo exporta una función que recibe (sequelize, DataTypes)
- * - Cada modelo define su método associate() para las relaciones
- *
- * USO:
- * const { User, Artist, Song } = require('../models');
- *
- * Ubicación: backend/src/models/index.js
  */
 
 const { Sequelize, DataTypes } = require('sequelize');
