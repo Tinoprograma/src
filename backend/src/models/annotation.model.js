@@ -123,9 +123,6 @@ module.exports = (sequelize, DataTypes) => {
     ]
   });
 
-  /**
-   * Define associations for Annotation model
-   */
   Annotation.associate = (models) => {
     // Anotación pertenece a una canción
     Annotation.belongsTo(models.Song, {

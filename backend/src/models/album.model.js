@@ -115,9 +115,6 @@ module.exports = (sequelize, DataTypes) => {
     ]
   });
 
-  /**
-   * Define associations for Album model
-   */
   Album.associate = (models) => {
     // Álbum pertenece a un artista
     Album.belongsTo(models.Artist, {
