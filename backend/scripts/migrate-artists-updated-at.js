@@ -29,7 +29,7 @@ async function migrate() {
     }
 
     // Agregar columna updated_at
-    console.log('📝 Agregando columna updated_at...');
+    console.log(' Agregando columna updated_at...');
     await connection.query(`
       ALTER TABLE artists 
       ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -37,7 +37,7 @@ async function migrate() {
     `);
 
     // Actualizar registros existentes
-    console.log('📝 Actualizando registros existentes...');
+    console.log(' Actualizando registros existentes...');
     await connection.query(`
       UPDATE artists 
       SET updated_at = created_at
@@ -51,7 +51,7 @@ async function migrate() {
     console.table(result);
 
   } catch (error) {
-    console.error('❌ Error en migración:', error.message);
+    console.error(' Error en migración:', error.message);
     throw error;
   } finally {
     await connection.end();
@@ -60,10 +60,10 @@ async function migrate() {
 
 migrate()
   .then(() => {
-    console.log('🎉 Proceso completado');
+    console.log(' Proceso completado');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('💥 Migración falló:', error);
+    console.error(' Migración falló:', error);
     process.exit(1);
   });

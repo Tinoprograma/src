@@ -18,7 +18,7 @@ const errorHandler = (err, req, res, next) => {
   err.message = err.message || 'Error interno del servidor';
 
   // Log del error CON DETALLES COMPLETOS
-  console.error('❌ ERROR COMPLETO:', {
+  console.error(' ERROR COMPLETO:', {
     message: err.message,
     statusCode: err.statusCode,
     name: err.name,
@@ -130,7 +130,7 @@ const errorHandler = (err, req, res, next) => {
 // Wrapper para async functions
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch((err) => {
-    console.error('❌ Error en asyncHandler:', err);
+    console.error(' Error en asyncHandler:', err);
     next(err);
   });
 };

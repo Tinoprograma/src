@@ -79,7 +79,7 @@ const fetchSpotifyTrack = async (songData) => {
     setIsLoadingSpotify(true);
     
     // Debug: Ver estructura del objeto song
-    console.log('🔍 Song data completo:', songData);
+    console.log(' Song data completo:', songData);
     
     // Si ya tiene spotify_track_id guardado, usarlo
     if (songData.spotify_track_id) {

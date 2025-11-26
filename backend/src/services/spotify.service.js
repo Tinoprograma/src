@@ -44,7 +44,7 @@ class SpotifyService {
       logger.info('  Token de Spotify obtenido');
       return this.accessToken;
     } catch (error) {
-      logger.error('❌ Error obteniendo token de Spotify:', error.response?.data || error.message);
+      logger.error(' Error obteniendo token de Spotify:', error.response?.data || error.message);
       throw new Error('No se pudo obtener token de Spotify');
     }
   }
@@ -61,7 +61,7 @@ class SpotifyService {
       if (album) query += ` album:${album}`;
       if (year) query += ` year:${year}`;
 
-      logger.info('🔍 Buscando en Spotify:', query);
+      logger.info(' Buscando en Spotify:', query);
 
       const response = await axios.get(`${this.spotifyApiBase}/search`, {
         headers: {
@@ -78,7 +78,7 @@ class SpotifyService {
       const tracks = response.data.tracks.items;
 
       if (tracks.length === 0) {
-        logger.info('⚠️ No se encontró la canción en Spotify');
+        logger.info(' No se encontró la canción en Spotify');
         return null;
       }
 
@@ -98,7 +98,7 @@ class SpotifyService {
         uri: track.uri
       };
     } catch (error) {
-      logger.error('❌ Error buscando en Spotify:', error.message);
+      logger.error(' Error buscando en Spotify:', error.message);
       return null;
     }
   }
@@ -130,7 +130,7 @@ class SpotifyService {
         uri: track.uri
       };
     } catch (error) {
-      logger.error('❌ Error obteniendo track de Spotify:', error.message);
+      logger.error(' Error obteniendo track de Spotify:', error.message);
       return null;
     }
   }

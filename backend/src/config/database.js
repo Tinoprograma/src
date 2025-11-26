@@ -13,15 +13,5 @@ const sequelize = new Sequelize(
   }
 );
 
-// Comentar el test automático para que no bloquee el inicio
-// async function testConnection() {
-//   try {
-//     await sequelize.authenticate();
-//     console.log('  MySQL conectado correctamente');
-//   } catch (error) {
-//     console.error('❌ Error conectando a MySQL:', error.message);
-//   }
-// }
-// testConnection();
 
 module.exports = sequelize;

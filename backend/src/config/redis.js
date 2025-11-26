@@ -7,11 +7,11 @@ const client = redis.createClient({
   password: process.env.REDIS_PASSWORD || undefined,
   retry_strategy: (options) => {
     if (options.error && options.error.code === 'ECONNREFUSED') {
-      console.error('❌ Redis servidor rechazó la conexión');
+      console.error(' Redis servidor rechazó la conexión');
       return new Error('Redis servidor rechazó la conexión');
     }
     if (options.total_retry_time > 1000 * 60 * 60) {
-      console.error('❌ Timeout de retry de Redis excedido');
+      console.error(' Timeout de retry de Redis excedido');
       return new Error('Timeout de retry excedido');
     }
     if (options.attempt > 10) {
@@ -27,7 +27,7 @@ client.on('connect', () => {
 });
 
 client.on('error', (err) => {
-  console.error('❌ Error de Redis:', err);
+  console.error(' Error de Redis:', err);
 });
 
 module.exports = client;

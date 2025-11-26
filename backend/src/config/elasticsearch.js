@@ -14,7 +14,7 @@ async function testConnection() {
     const health = await client.cluster.health();
     console.log('  Elasticsearch conectado:', health.body.status);
   } catch (error) {
-    console.error('❌ Error conectando a Elasticsearch:', error.message);
+    console.error(' Error conectando a Elasticsearch:', error.message);
   }
 }
 
